@@ -130,9 +130,12 @@ enum ALGO_IDX {
     ALGO_SM4_OCB_IDX,
     ALGO_SM4_OFB_IDX,
     ALGO_SM4_XTS_IDX,
-    
 
+	//rand
 	ALGO_RAND_IDX,
+
+	//asym cipher
+	ALGO_SM2_IDX,
 	//结束
 	ALGO_SYM_NUM,
     ALGO_SYM_INVALID = ALGO_SYM_NUM
@@ -276,8 +279,8 @@ typedef struct {
     uint8_t *src;
     uint8_t *dst;
     void *rsa_data[RSA_NUM];
-	void *sm2_data[SM2_NUM];
-    void *ecc_data[EC_NIST_NUM];
+	void *sm2_data;
+    void *ecc_data;
     int test_length;
     pce_queue_handle queue_handle;//队列描述符，目前仅有一个队列
 	uint16_t cipher_algo; //用于存放对称加密算法，类型为 enum pce_alg,也用于存放aead算法

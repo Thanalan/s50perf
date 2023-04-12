@@ -280,7 +280,7 @@ static int _init_sm2_test_data(sm2_test_data_t *test_data, uint16_t op_type)
 
 int init_sm2_data(loopargs_t *loopargs, int loopargs_len)
 {
-    int i, j;
+  /*  int i, j;
     int ret = 0;
     sm2_test_data_t *data;
     for (i = 0; i < loopargs_len; i++) {
@@ -293,7 +293,7 @@ int init_sm2_data(loopargs_t *loopargs, int loopargs_len)
 	    }
 	}
     }
-
+*/
     return 0;
 }
 
@@ -308,7 +308,7 @@ static void _free_sm2_test_data(sm2_test_data_t *test_data)
 
 void free_sm2_data(loopargs_t *loopargs, int loopargs_len)
 {
-    int i, j;
+    /*int i, j;
     sm2_test_data_t *data;
     for (i = 0; i < loopargs_len; i++) {
 	for (j = 0; j < SM2_NUM; j++) {
@@ -318,7 +318,7 @@ void free_sm2_data(loopargs_t *loopargs, int loopargs_len)
 		loopargs[i].sm2_data[j] = NULL;
 	    }
 	}
-    }
+    }*/
 }
 
 void fill_op_data_sm2(pce_op_data_t *op_data, sm2_test_data_t *test_data)
@@ -377,11 +377,12 @@ void fill_op_data_sm2(pce_op_data_t *op_data, sm2_test_data_t *test_data)
 static int test_sm2_loop(void *args)
 {
 	loopargs_t *loopargs = args;
-    if (NULL == args)
-	return 0;
+    if(args == NULL){
+		return 0;
+	}
 	int i;
-	int batch = loopargs->batch;
-    sm2_test_data_t *data = (sm2_test_data_t *)args;
+	int batch = 1;
+    sm2_test_data_t *data = (sm2_test_data_t *)loopargs->sm2_data;
 	pce_queue_handle queue_handle = loopargs->queue_handle;
 	callback_context_t *callback_context = loopargs->callbacks;
 
@@ -390,26 +391,26 @@ static int test_sm2_loop(void *args)
 	sm2_datas = loopargs->requests;
 	
 	for(i = 0; i < batch; i++){
-			//COMPLETION_INIT(&loopargs->completions[i]);
-		
-			//loopargs->sm2_data给值可能不对
-			fill_op_data_sm2(&sm2_datas[i], loopargs->sm2_data[i]);
+		fill_op_data_sm2(&sm2_datas[i], data);
 			
-			callback_context->callbackfunc = symcallback;//自定义回调函数
-			callback_context->op_tag = sm2_datas;
-			//callback_context->complete = &loopargs->completions[i]; //设置为传入的信号量地址
+		callback_context[i].callbackfunc = symcallback;//自定义回调函数
+		callback_context[i].op_tag = &sm2_datas[i];
+		callback_context[i].algo_index = ALGO_SM2_IDX;
+		callback_context[i].test_num = loopargs->testnum;
+		callback_context[i].process_count = loopargs->processed_count;
 		
-			sm2_datas[i].sm2.tag = (uint64_t) (callback_context);
+		sm2_datas[i].sm2.tag = (uint64_t) (callback_context);
 	
-		}
+	}
 
     enqueued_count = pce_enqueue(queue_handle, &sm2_datas, batch);//入队一个,此处队列句柄来源错误
+    return 1;
     if (0 == enqueued_count) {
          goto out;
     }
 	out:
 
-	return 0;
+	return 1;
 	
 }
 
@@ -459,7 +460,8 @@ void test_perf_for_sm2(loopargs_t *loopargs)
     long count = 0;
     double d;
     int testnum = 0;
-
+	loopargs->batch = cmd_option.batch;
+	int algo_index = ALGO_SM2_IDX;
     // test sm2 sign and verify
     for (testnum = 0; testnum < SM2_NUM; testnum++) {
 		st = 1;
@@ -468,16 +470,21 @@ void test_perf_for_sm2(loopargs_t *loopargs)
 		}
 	
 		// SIGN性能测试
-		sm2_test_data_t *data = loopargs->sm2_data[testnum];
-		memset(loopargs->sm2_data[testnum], 0, sizeof(sm2_test_data_t));
-		_init_sm2_test_data(loopargs->sm2_data[testnum],PCE_SM2_SIGN);
-
+		sm2_test_data_t *sm2_data = malloc(sizeof(sm2_test_data_t) * 2);
+		memset(sm2_data, 0, sizeof(sm2_test_data_t));
+		_init_sm2_test_data(sm2_data,PCE_SM2_SIGN);
+		loopargs->sm2_data = sm2_data;
 		pkey_print_message("sign", "sm2", 0, test_sm2_curves_bits[testnum],
 			       cmd_option.duration);
-
-		Time_F(START);
-		count = run_benchmark(test_sm2_loop, loopargs->sm2_data[testnum]);
-		d = Time_F(STOP);
+		
+		loopargs->testnum = testnum;
+		loopargs->processed_count[algo_index] = 0;
+		sem_post(&start_sem);
+		gettimeofday(&tv,NULL);	
+		count = run_benchmark(test_sm2_loop, loopargs);
+		gettimeofday(&tv1,NULL);
+		d = (tv1.tv_usec-tv.tv_usec)/(100000.0)+((tv1.tv_sec-tv.tv_sec));
+		count = loopargs->processed_count[algo_index];
 	    fprintf(stderr,
 		    mr ? "+R7:%ld:%d:%.2f\n"
 		       : "%ld %d bit SM2 signs in %.2fs \n",
@@ -486,14 +493,18 @@ void test_perf_for_sm2(loopargs_t *loopargs)
 	
 
 	// verify性能测试
-		memset(loopargs->sm2_data[testnum], 0, sizeof(sm2_test_data_t));
-		_init_sm2_test_data(loopargs->sm2_data[testnum],PCE_SM2_VERIFY);
+		memset(sm2_data, 0, sizeof(sm2_test_data_t));
+		_init_sm2_test_data(sm2_data ,PCE_SM2_VERIFY);
 	    pkey_print_message("verify", "sm2", 0,
 			       test_sm2_curves_bits[testnum],
 			       cmd_option.duration);
-	    Time_F(START);
-	    count = run_benchmark(test_sm2_loop, loopargs->sm2_data[testnum]);
-	    d = Time_F(STOP);
+	    loopargs->processed_count[algo_index] = 0;
+		sem_post(&start_sem);
+		gettimeofday(&tv,NULL);	
+	    count = run_benchmark(test_sm2_loop, loopargs);
+	    gettimeofday(&tv1,NULL);
+		d = (tv1.tv_usec-tv.tv_usec)/(100000.0)+((tv1.tv_sec-tv.tv_sec));
+		count = loopargs->processed_count[algo_index];
 	    fprintf(stderr,
 		    mr ? "+R8:%ld:%d:%.2f\n"
 		       : "%ld %d bit SM2 verify in %.2fs\n",
@@ -502,14 +513,18 @@ void test_perf_for_sm2(loopargs_t *loopargs)
 	    sm2sign_results[testnum][1] = d / (double)count; // 每次验签运算耗时
 
 	// GENKEY 性能测试
-		memset(loopargs->sm2_data[testnum], 0, sizeof(sm2_test_data_t));
-		_init_sm2_test_data(loopargs->sm2_data[testnum],PCE_SM2_KEY);
+		memset(sm2_data, 0, sizeof(sm2_test_data_t));
+		_init_sm2_test_data(sm2_data,PCE_SM2_KEY);
 	    pkey_print_message("genkey", "sm2", 0,
 			       test_sm2_curves_bits[testnum],
 			       cmd_option.duration);
-	    Time_F(START);
-	    count = run_benchmark(test_sm2_loop, loopargs->sm2_data[testnum]);
-	    d = Time_F(STOP);
+	   loopargs->processed_count[algo_index] = 0;
+		sem_post(&start_sem);
+		gettimeofday(&tv,NULL);	
+	    count = run_benchmark(test_sm2_loop, loopargs);
+	    gettimeofday(&tv1,NULL);
+		d = (tv1.tv_usec-tv.tv_usec)/(100000.0)+((tv1.tv_sec-tv.tv_sec));
+		count = loopargs->processed_count[algo_index];
 	    fprintf(stderr,
 		    mr ? "+R8:%ld:%d:%.2f\n"
 		       : "%ld %d bit SM2 genkey in %.2fs\n",
@@ -548,7 +563,7 @@ void show_results_for_sm2(void)
 	if (!sm2sign_doit[k])
 	    continue;
 	if (testnum && !mr) {
-	    printf("%30ssign    verify    sign/s verify/s\n", " ");
+	    printf("%30ssign    verify    genkey    sign/s verify/s genkey/s\n", " ");
 	    testnum = 0;
 	}
 

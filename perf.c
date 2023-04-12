@@ -160,6 +160,9 @@ algo_data_t algo_datas[] = {
 	{"sm4-xts", PCE_SM4_XTS, ALGO_SM4_XTS_IDX, ALGO_TYPE_SYM_CIPHER, SM4_XTS_KEYIV},
 	
 	{"rand", PCE_RANDOM, ALGO_RAND_IDX, ALGO_TYPE_RAND, 0},
+
+	//非对称加密
+	{"sm2",PCE_SM2_KEY,ALGO_SM2_IDX,ALGO_TYPE_ASYM,0},
 	{NULL, 0 , 0, 0}
 };
 
@@ -655,6 +658,9 @@ void* thread_function(void* id)
 				break;
 			case ALGO_TYPE_AEAD:
 				test_aead_perf(loopargs);
+				break;
+			case ALGO_TYPE_ASYM:
+				test_perf_for_sm2(loopargs);
 				break;
 			default:
 				fprintf(stderr,"unsupport algo type in func:%s in line:%d\n",__func__,__LINE__);

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdlib.h>
 #include "pce.h"
 #include "pce_common.h"
 #include "pce_crypto.h"
@@ -102,6 +103,7 @@ void pce_lib_exit(void){
 void *pce_alloc_mem(int numa_node, uint32_t size){
 	fprintf(stderr, "func:%s in file:%s\n",__func__,__FILE__);
 	usleep(1000);
+	return malloc(sizeof(uint32_t) * size);
 	return NULL;
 
 
@@ -110,6 +112,7 @@ void *pce_alloc_mem(int numa_node, uint32_t size){
 
 void pce_free_mem(void *buf){
 	fprintf(stderr, "func:%s in file:%s\n",__func__,__FILE__);
+	free(buf);
 	usleep(1000);
 
 
