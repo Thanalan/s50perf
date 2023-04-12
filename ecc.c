@@ -975,8 +975,6 @@ static int test_ecc_loop(void *args)
 int test_hit_for_ecc(const char *algo_name)
 {
     int ret = -1;
-
-#ifndef OPENSSL_NO_SM2
     int i;
     if (!strcmp(algo_name, "ecc")) {
 	for (i = 0; i < SM2_NUM; i++) {
@@ -999,7 +997,7 @@ int test_hit_for_ecc(const char *algo_name)
 
 	ret = 0;
     }
-#endif
+
 
     return ret;
 }

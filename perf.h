@@ -278,7 +278,7 @@ typedef struct {
     uint8_t *dst_buf;
     uint8_t *src;
     uint8_t *dst;
-    void *rsa_data[RSA_NUM];
+    void *rsa_data;
 	void *sm2_data;
     void *ecc_data;
     int test_length;
