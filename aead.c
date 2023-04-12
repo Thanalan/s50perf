@@ -43,17 +43,14 @@ int test_aead_enc_loop(void *args)
 	for(i = 0; i < batch; i++){
 		build_aead_cmd (&aead_datas[i],loopargs->cipher_algo,src, 
 								aead_length, dst,aead_length,loopargs->cipher_key);
-			
-			
+						
 		callback_context->callbackfunc = symcallback;//自定义回调函数
 		callback_context->op_tag = &aead_datas[i];
-		//callback_context->complete = &loopargs->completions[i]; //设置为传入的信号量地址
 		callback_context[i].algo_index = loopargs->algo_index;
 		callback_context[i].test_num = loopargs->testnum;
 		callback_context[i].process_count = loopargs->processed_count;
 		
-		aead_datas[i].aead.tag = (uint64_t) (callback_context);
-	
+		aead_datas[i].aead.tag = (uint64_t) (callback_context);	
 	}
 	
 	//入队

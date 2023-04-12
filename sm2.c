@@ -67,8 +67,8 @@ static const int test_sm2_curves_bits[SM2_NUM] = {
 int sm2sign_doit[SM2_NUM] = {0};
 int sm2enc_doit[SM2_NUM] = {0};
 
-static double sm2sign_results[SM2_NUM][2];
-static double sm2enc_results[SM2_NUM][2];
+static double sm2sign_results[SM2_NUM][6];
+static double sm2enc_results[SM2_NUM][6];
 
 
 static char *d_hex =
@@ -512,10 +512,10 @@ void test_perf_for_sm2(loopargs_t *loopargs)
 	    d = Time_F(STOP);
 	    fprintf(stderr,
 		    mr ? "+R8:%ld:%d:%.2f\n"
-		       : "%ld %d bit SM2 verify in %.2fs\n",
+		       : "%ld %d bit SM2 genkey in %.2fs\n",
 		    count, test_sm2_curves_bits[testnum],
 		    d); // R8 验签结果， +R8 : 运算次数 ： 位数： 耗时秒
-	    sm2sign_results[testnum][1] = d / (double)count; // 每次验签运算耗时
+	    sm2sign_results[testnum][2] = d / (double)count; // 每次验签运算耗时
 	    
 	
 	}
@@ -556,10 +556,10 @@ void show_results_for_sm2(void)
 	    printf("+F6:%u:%u:%f:%f\n", k, test_sm2_curves_bits[k],
 		   sm2sign_results[k][0], sm2sign_results[k][1]);
 	else
-	    printf("%4u bit sm2 (%s) %8.4fs %8.4fs %8.1f %8.1f\n",
+	    printf("%4u bit sm2 (%s) %8.4fs %8.4fs %8.4fs %8.1f %8.1f %8.1f\n",
 		   test_sm2_curves_bits[k], test_sm2_curves_names[k],
-		   sm2sign_results[k][0], sm2sign_results[k][1],
-		   1.0 / sm2sign_results[k][0], 1.0 / sm2sign_results[k][1]);
+		   sm2sign_results[k][0], sm2sign_results[k][1],sm2sign_results[k][2],
+		   1.0 / sm2sign_results[k][0], 1.0 / sm2sign_results[k][1],1.0 / sm2sign_results[k][1]);
     }
 
 }
@@ -620,10 +620,4 @@ int do_multi_buf_sm2(char *buf, int n)
 
     return ret;
 }
-
-/*
-
-*/
-
-
 

@@ -218,6 +218,7 @@ void test_hash_perf(loopargs_t *loopargs)
 			loopargs->dst = (uint8_t*)dst_head;
 		}
 		print_message(algo_name, 0, lengths[testnum], cmd_option.duration);
+
 		sem_post(&start_sem);
 		gettimeofday(&tv,NULL);			
         count = run_benchmark(test_hash_fn, loopargs);

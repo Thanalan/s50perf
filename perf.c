@@ -301,6 +301,7 @@ int run_benchmark(bench_function loop_function, loopargs_t *loopargs)
     count = 0;
 	//0x3fffffff用于防止死锁
     for (i = 0;run && i < 0x3fffffff; i++) {
+		
         count += loop_function((void *)loopargs);
 		if(sem_trywait(&end_sem) == 0 ){
 			break;
@@ -771,14 +772,6 @@ out:
 		
 }
 
-/*
-1. 命令解析
-2. 参数设置
-3. 运行 // 并发控制?
-4. 统计
-5. 结果输出
-*/
-
 int create_poll_threads(pthread_t *pollingthread)
 {
 	int i;
@@ -802,13 +795,10 @@ void *va_to_iova(void *usr, void *va)
 }
 int thread_run_algo[MAX_THREAD_NUM] = {0};
 
-int show_results(int pr_header) //输出结果不正确
+int show_results(int pr_header) //多线程输出结果不正确
 {
 	int i = 0, k = 0,j = 0,m = 0;
-	//int k = 0;
-	//int j = 0;
-	//int m = 0; //暂存k的位置
-	// parent
+
     //打印多线程测试结果，由主线程执行,i用于处理多线程
     int testnum = 0;
     for(i = 0; i < g_thread_num ; i++){
@@ -954,7 +944,7 @@ static int set_global_variables()
 
 	sem_init(&end_poll,0,0);
 	sem_init(&end_sem,0,0);
-		sem_init(&start_sem, 0, 0);
+	sem_init(&start_sem, 0, 0);
 	return 0;
 }
 
@@ -1001,28 +991,9 @@ int main(int argc, char **argv)
 	init_queue_from_device(queue_num);
 	
 	//创建轮询响应队列的线程
+	//running = 1; 
+	create_poll_threads(pollingthreads);
 
-	//轮询线程一个暂定为负责四个队列，如果创建的队列数量大于四个，假设为7个，则会创建两个线程，
-	//0号线程负责0，2，4，6，0号线程负责1，3，5，队列
-	//大于八个则会创建三个线程，以此类推
-	running = 1; 
-	//create_poll_threads(pollingthreads);
-			int poll_thread_num = (g_queue_num / POLLING_NUM) + 1;
-		
-			for(i = 0;i < poll_thread_num; i++){
-				//轮询线程一个暂定为负责四个队列，如果创建的队列数量大于四个，假设为7个，则会创建两个线程，
-				//0号线程负责0，2，4，6，0号线程负责1，3，5，队列
-				//大于八个则会创建三个线程，以此类推
-		
-				
-				pthread_create(&pollingthreads[i],NULL,process_response,i);//第四个参数可以找到响应队列，
-				//使用地址传参数，之后只会用到地址指向的值。
-		
-				//如果i为0，则i+step*i = 0+2*0=0;创建0号线程 
-				//process_response(i);
-			}
-
-	
     for (i = 0; i < ALGO_SYM_NUM; i++)
         if (do_sym_or_hash[i])
             pr_header++;
