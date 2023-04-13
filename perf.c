@@ -22,11 +22,9 @@
 
 //全局变量定义
 
-// #define OPENSSL_NO_EC 0
 perf_callbacks global_perf_algo_list[];
 sem_t end_sem;
 sem_t end_poll;
-
 
 #define MAX_QUEUE_NUM 16
 #define MAX_NUMBER_OF_THREADS 16
@@ -39,8 +37,6 @@ pce_queue_handle g_queue_handles[MAX_QUEUE_NUM];
 
 pthread_key_t thread_key; //线程私有数据，用于存放每个线程的id和需要执行的loopargs
 
-pthread_key_t *key = NULL;
-
 volatile int running = 0;
 volatile int stop_poll = 1;
 
@@ -49,14 +45,6 @@ int g_queue_num = 1;  //队列数量默认值
 int g_batch = 1;
 int g_queue_depth = QUEUE_DEPTH_256;
 int pr_header = 0;
-
-
-//处理多线程数据，改为三维数组，按照线程号索引进行打印结果。打印结果仍然为主线程
-double results[MAX_THREAD_NUM][ALGO_SYM_NUM][SIZE_NUM] = {0};
-double latency_results[MAX_THREAD_NUM][ALGO_SYM_NUM][SIZE_NUM]={0};
-
-int lengths[SIZE_NUM] = {16,32, 64, 128, 256, 1024,  4 * 1024, 8192,16384};
-
 perf_cmd_args cmd_option = {0};
 static volatile int run = 0;
 static volatile int poll_run = 0;
@@ -64,6 +52,14 @@ static volatile int poll_run = 0;
 int mr = 0; // multi response to parent
 static int usertime = 1;
 int testnum = 0;
+
+
+//处理多线程数据，改为三维数组，按照线程号索引进行打印结果。打印结果仍然为主线程
+double results[MAX_THREAD_NUM][ALGO_SYM_NUM][SIZE_NUM] = {0};
+
+int lengths[SIZE_NUM] = {16,32, 64, 128, 256, 1024,  4 * 1024, 8192,16384};
+
+
 
 algo_data_t algo_datas[] = {
 	{"md5", PCE_HASH_MD5, ALGO_MD5_IDX, ALGO_TYPE_HASH, MD5_LEN},
@@ -159,19 +155,19 @@ algo_data_t algo_datas[] = {
 	
 	{"rand", PCE_RANDOM, ALGO_RAND_IDX, ALGO_TYPE_RAND, 0},
 
-	//非对称加密
-	{"rsa-1024", PCE_RSA_KEY, ALGO_RSA_1024_IDX, ALGO_TYPE_ASYM, 0},
-	{"rsa-2048", PCE_RSA_KEY, ALGO_RSA_2048_IDX, ALGO_TYPE_ASYM, 0},
-	{"rsa-3072", PCE_RSA_KEY, ALGO_RSA_3072_IDX, ALGO_TYPE_ASYM, 0},
-	{"rsa-4096", PCE_RSA_KEY, ALGO_RSA_4096_IDX, ALGO_TYPE_ASYM, 0},
+	//非对称加密,最后一项存放长度
+	{"rsa-1024", PCE_RSA_KEY, ALGO_RSA_1024_IDX, ALGO_TYPE_RSA, 1024},
+	{"rsa-2048", PCE_RSA_KEY, ALGO_RSA_2048_IDX, ALGO_TYPE_RSA, 2048},
+	{"rsa-3072", PCE_RSA_KEY, ALGO_RSA_3072_IDX, ALGO_TYPE_RSA, 3072},
+	{"rsa-4096", PCE_RSA_KEY, ALGO_RSA_4096_IDX, ALGO_TYPE_RSA, 4096},
 	
-	{"ecc-192", PCE_ECC_KEY, ALGO_ECC_SECP192R1_IDX, ALGO_TYPE_ASYM, 0},
-	{"ecc-224", PCE_ECC_KEY, ALGO_ECC_SECP224R1_IDX, ALGO_TYPE_ASYM, 0},
-	{"ecc-256", PCE_ECC_KEY, ALGO_ECC_SECP256R1_IDX, ALGO_TYPE_ASYM, 0},
-	{"ecc-384", PCE_ECC_KEY, ALGO_ECC_SECP384R1_IDX, ALGO_TYPE_ASYM, 0},
-	{"ecc-521", PCE_ECC_KEY, ALGO_ECC_SECP521R1_IDX, ALGO_TYPE_ASYM, 0},
+	{"ecc-192", PCE_ECC_KEY, ALGO_ECC_SECP192R1_IDX, ALGO_TYPE_ECC, PCE_SECP192R1},
+	{"ecc-224", PCE_ECC_KEY, ALGO_ECC_SECP224R1_IDX, ALGO_TYPE_ECC, PCE_SECP224R1},
+	{"ecc-256", PCE_ECC_KEY, ALGO_ECC_SECP256R1_IDX, ALGO_TYPE_ECC, PCE_SECP256R1},
+	{"ecc-384", PCE_ECC_KEY, ALGO_ECC_SECP384R1_IDX, ALGO_TYPE_ECC, PCE_SECP384R1},
+	{"ecc-521", PCE_ECC_KEY, ALGO_ECC_SECP521R1_IDX, ALGO_TYPE_ECC, PCE_SECP521R1},
 	
-	{"sm2",PCE_SM2_KEY,ALGO_SM2_IDX,ALGO_TYPE_ASYM,0},
+	{"sm2",PCE_SM2_KEY,ALGO_SM2_IDX,ALGO_TYPE_SM2,0},
 	{NULL, 0 , 0, 0}
 };
 
@@ -222,12 +218,11 @@ static int init_queue_from_device(int queue_num)
 				return -1;
 			}
 	
-			// queue size 256
 			if (pce_init_queue(g_queue_handles[i], g_queue_depth, 0)) {
 				pce_release_queue(g_queue_handles[i]);
 				return -1;
 				}
-			}
+		}
 		}
 	return 0;
 }
@@ -312,7 +307,7 @@ int run_benchmark(bench_function loop_function, loopargs_t *loopargs)
     run = 1;
     count = 0;
 	//0x3fffffff用于防止死锁
-    for (i = 0;run && i < 0x3fffffff; i++) {
+    for (i = 0;run && i < 0x0fffffff; i++) {
 		
         count += loop_function((void *)loopargs);
 		if(sem_trywait(&end_sem) == 0 ){
@@ -472,7 +467,7 @@ int polute_doit_flag(char *algo_name)
 	algo_data_t *algo_data = (algo_data_t*)getHashMap(g_algo_hash_table, algo_name);
 		//algo_data_t *algo_data2 = (algo_data_t*)getHashMap(g_algo_hash_table, "asa");
 	
-	if(algo_data->algo_type != ALGO_TYPE_ASYM) {//如果不是非对称算法，则是对称类或者摘要算法或者aead算法
+	if(algo_data->algo_type < ALGO_TYPE_RSA) {//如果不是非对称算法，则是对称类或者摘要算法或者aead算法
 		pr_header++; //完成原有test_hash_hit函数的功能
 		return 0;
 	}
@@ -493,40 +488,6 @@ int polute_doit_flag(char *algo_name)
     return ret;
 }
 
-
-//根据线程id获得该线程应该执行的算法
-/*
-char * get_mixed_algo_name(int thread_id)
-{	
-	int i = 0;
-	if(cmd_option.mixed == NULL){
-		fprintf(stderr, "No mixed input!");
-		return 0;
-	}
-	char *ret = NULL;
-	char str[256] = { 0 };
-	strcpy(str, cmd_option.mixed); //复制一份
-	
-	char* str1 = strtok(str, "+"); //以+作为分割符
-	if(thread_id == 0){
-		return str1;
-	}
-	while (str1 != NULL)
-	{	
-		i++;
-        str1 = strtok(NULL, "+");
-		if(thread_id == i){ 
-			return str1;
-		}
-	}
-	//g_thread_num = (i+1); //设置线程总数,如果有一个参数，i=0,创建一个线程
-	//如果有两个参数，i = 1,创建两个线程
-	g_queue_num = 1;
-	//混合模式为所有线程都向这一个队列发送数据，即使申请了大于一个的队列也不会使用
-	return NULL;
-	
-}
-*/
 //获得algo有几个算法
 int  get_algo_name_num(char *name)
 {	
@@ -616,7 +577,6 @@ void* thread_function(void* id)
         fprintf(stderr, "alloc memory failed  in %s:%d\n",__func__ , __LINE__);
         //return -1;
     }
-
     memset(loopargs, 0, sizeof(loopargs_t));
 	//参数全部给NULL ,在perf中会再分配参数
 	loopargs->src_buf = malloc(lengths[SIZE_NUM - 1] + 64); //源数据
@@ -668,8 +628,16 @@ void* thread_function(void* id)
 			case ALGO_TYPE_AEAD:
 				test_aead_perf(loopargs);
 				break;
-			case ALGO_TYPE_ASYM:
+			case ALGO_TYPE_SM2:
 				test_perf_for_sm2(loopargs);
+				break;
+			case ALGO_TYPE_ECC:
+				loopargs->test_length = algo_data->algo_longness; //获取curvetype
+				test_perf_for_ecc(loopargs);
+				break;
+			case ALGO_TYPE_RSA:
+				loopargs->test_length = algo_data->algo_longness; //获得算法长度
+				test_perf_for_rsa(loopargs);
 				break;
 			default:
 				fprintf(stderr,"unsupport algo type in func:%s in line:%d\n",__func__,__LINE__);
@@ -690,7 +658,6 @@ void* thread_function(void* id)
 	free(loopargs->processed_count);
 	free(loopargs);
 	//释放tlv
-	free(tlv->do_sym_or_hash);
 	free(tlv->algo_name);
 	free(tlv);
 	return NULL;
@@ -720,14 +687,13 @@ int poll_queue(void* polling)
 	dequeued_count = pce_dequeue(queue_handle, rsp_datas, rsp_datas_size);//尽量多出队
 		
 	for (i = 0; i < dequeued_count; i++) {
-					
-		if (rsp_datas[i].state != CMD_SUCCESS) {
-			//fprintf(stderr, "in_bytes ");
-	   
-			//continue;
-		}
+				
 		callback_tag =(callback_context_t *)rsp_datas[i].tag;
-			 
+		//如果不是由测试程序发送的请求，则掠过，通过判断callbackfunc的值进行判断是否是测试程序的请求
+		if (rsp_datas[i].state != CMD_SUCCESS || callback_tag->callbackfunc != symcallback ) {
+			
+			//continue;
+		}		 
 		(callback_tag->callbackfunc)(callback_tag); 
 	}
 
@@ -764,16 +730,13 @@ void* process_response(void * id) //仅需要轮询对应的队列即可，也�
 		for(i=0; i<g_thread_num;i++){
 		sem_wait(&start_sem);}
 		running = 1;
-		gettimeofday(&tv,NULL);
+		//gettimeofday(&tv,NULL);
     	Time_F(START);			
     	count = run_poll_benchmark(poll_queue, &poll);
     	d = Time_F(STOP);
 				//结束计时,通知结束发送
 		used_time = d;
-		gettimeofday(&tv1,NULL);
-		//fprintf(stderr,"\nprocess_response:time:%ld ",tv1.tv_usec);
-		//fprintf(stderr,"time:%ld \n",tv.tv_usec);			 
-		//used_time = (tv1.tv_usec-tv.tv_usec)/(100000.0)+((tv1.tv_sec-tv.tv_sec));
+		//gettimeofday(&tv1,NULL);
 		run = 0;
 		for(i=0; i<g_thread_num;i++){
 		sem_post(&end_sem);}

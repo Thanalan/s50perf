@@ -54,8 +54,10 @@ enum ALGO_TYPE{
 	ALGO_TYPE_HMAC = 1,
 	ALGO_TYPE_SYM_CIPHER = 2,
 	ALGO_TYPE_AEAD = 3,
-	ALGO_TYPE_ASYM =4,
-	ALGO_TYPE_RAND =5
+	ALGO_TYPE_RSA = 4,
+	ALGO_TYPE_ECC = 5,
+	ALGO_TYPE_SM2 = 6,
+	ALGO_TYPE_RAND = 7
 };
 
 //更改算法模式，对称算法统一为算法名称加模式，格式与openssl算法名称一致
@@ -257,9 +259,7 @@ typedef struct {
 typedef struct tlv_t{
 	int thread_id;		//线程编号，作用类似于tid,
 	loopargs_t *loopargs; //循环参数
-	//perf_callbacks *perf_func_table; //函数表，用于不同线程执行不同的操作
 	pce_queue_handle queue; //指示本线程往哪个队列发送请求，目前仅实现一个线程往一个队列发送，或者多对一，而没有实现一对多。
-	int *do_sym_or_hash;   //存放此线程需要执行的函数操作
 	char *algo_name; //算法名称
 }thread_local_variables_t;
 

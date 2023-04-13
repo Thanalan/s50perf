@@ -746,8 +746,8 @@ typedef struct {
 static const char *test_ecc_curves_names[SM2_NUM] = {
     "eccp256v1",
 };
-static const int test_ecc_curves_bits[SM2_NUM] = {
-    256,
+static const int test_ecc_curves_bits[] = {
+    192,224,256,384,512,
 };
 int eccsign_doit[SM2_NUM] = {0};
 int eccenc_doit[SM2_NUM] = {0};
@@ -974,30 +974,16 @@ int test_hit_for_ecc(const char *algo_name)
 {
     int ret = -1;
     int i;
-    if (!strcmp(algo_name, "ecc")) {
+	if(getHashMap(g_algo_hash_table,algo_name) == NULL){
+		return -1;
+	}
+	
+	algo_data_t *algo_data = (algo_data_t*)getHashMap(g_algo_hash_table, algo_name);
 	for (i = 0; i < SM2_NUM; i++) {
 	    eccsign_doit[i] = eccenc_doit[i] = 1;
 	}
-
-	ret = 0;
-    }
-
-    if (strcmp(algo_name, "eccsign") == 0) {
-	for (i = 0; i < SM2_NUM; i++)
-	    eccsign_doit[i] = 1;
-
-	ret = 0;
-    }
-
-    if (strcmp(algo_name, "eccenc") == 0) {
-	for (i = 0; i < SM2_NUM; i++)
-	    eccenc_doit[i] = 1;
-
-	ret = 0;
-    }
-
-
-    return ret;
+    
+    return 0;
 }
 void test_perf_for_ecc(loopargs_t *loopargs)
 {
@@ -1008,7 +994,11 @@ void test_perf_for_ecc(loopargs_t *loopargs)
     double d;
     int testnum = 0;
 	loopargs->batch = cmd_option.batch;
-	int algo_index = ALGO_SM2_IDX;
+	thread_local_variables_t *tlv = (thread_local_variables_t*)pthread_getspecific(thread_key); //找到tlv的首地址
+	algo_data_t *algo_data = (algo_data_t*)getHashMap(g_algo_hash_table, tlv->algo_name);
+	
+	int algo_index = algo_data->algo_index;
+	loopargs->algo_index = algo_index;
 	ecc_test_data_t *ecc_data = malloc(sizeof(ecc_test_data_t) * 2);
     // test sm2 sign and verify
     for (testnum = 0; testnum < SM2_NUM; testnum++) {
@@ -1021,64 +1011,64 @@ void test_perf_for_ecc(loopargs_t *loopargs)
 		
 		memset(ecc_data, 0, sizeof(ecc_test_data_t));
 		
-		_init_ecc_test_data(ecc_data,PCE_SECP192R1,PCE_ECDSA_SIGN);
+		_init_ecc_test_data(ecc_data, loopargs->test_length, PCE_ECDSA_SIGN);
 		
 		loopargs->ecc_data = ecc_data;
-		pkey_print_message("sign", "ecc", 0, test_ecc_curves_bits[testnum],
+		pkey_print_message("sign", "ecc", 0, test_ecc_curves_bits[loopargs->test_length],
 			       cmd_option.duration);
 		
 		loopargs->testnum = testnum;
 		loopargs->processed_count[algo_index] = 0;
-		sem_post(&start_sem);
+		//sem_post(&start_sem);
 		gettimeofday(&tv,NULL);	
 		count = run_benchmark(test_ecc_loop, loopargs);
 		gettimeofday(&tv1,NULL);
 		d = (tv1.tv_usec-tv.tv_usec)/(100000.0)+((tv1.tv_sec-tv.tv_sec));
-		count = loopargs->processed_count[algo_index];
+		//count = loopargs->processed_count[algo_index];
 	    fprintf(stderr,
 		    mr ? "+R7:%ld:%d:%.2f\n"
 		       : "%ld %d bit ecc signs in %.2fs \n",
-		    count, test_ecc_curves_bits[testnum], d);
+		    count, test_ecc_curves_bits[loopargs->test_length], d);
 	 	eccsign_results[testnum][0] = d / (double)count; // 每次签名运算耗时
 	
 
 	// verify性能测试
 		memset(ecc_data, 0, sizeof(ecc_test_data_t));
-		_init_ecc_test_data(ecc_data ,PCE_SECP192R1,PCE_ECDSA_VERIFY);
+		_init_ecc_test_data(ecc_data , loopargs->test_length, PCE_ECDSA_VERIFY);
 	    pkey_print_message("verify", "ecc", 0,
 			       test_ecc_curves_bits[testnum],
 			       cmd_option.duration);
 	    loopargs->processed_count[algo_index] = 0;
-		sem_post(&start_sem);
+		//sem_post(&start_sem);
 		gettimeofday(&tv,NULL);	
 	    count = run_benchmark(test_ecc_loop, loopargs);
 	    gettimeofday(&tv1,NULL);
 		d = (tv1.tv_usec-tv.tv_usec)/(100000.0)+((tv1.tv_sec-tv.tv_sec));
-		count = loopargs->processed_count[algo_index];
+		//count = loopargs->processed_count[algo_index];
 	    fprintf(stderr,
 		    mr ? "+R8:%ld:%d:%.2f\n"
 		       : "%ld %d bit ecc verify in %.2fs\n",
-		    count, test_ecc_curves_bits[testnum],
+		    count, test_ecc_curves_bits[loopargs->test_length],
 		    d); // R8 验签结果， +R8 : 运算次数 ： 位数： 耗时秒
 	    eccsign_results[testnum][1] = d / (double)count; // 每次验签运算耗时
 
 	// GENKEY 性能测试
 		memset(ecc_data, 0, sizeof(ecc_test_data_t));
-		_init_ecc_test_data(ecc_data,PCE_SECP192R1,PCE_ECC_KEY);
+		_init_ecc_test_data(ecc_data, loopargs->test_length, PCE_ECC_KEY);
 	    pkey_print_message("genkey", "ecc", 0,
-			       test_ecc_curves_bits[testnum],
+			       test_ecc_curves_bits[loopargs->test_length],
 			       cmd_option.duration);
 	   loopargs->processed_count[algo_index] = 0;
-		sem_post(&start_sem);
+		//sem_post(&start_sem);
 		gettimeofday(&tv,NULL);	
 	    count = run_benchmark(test_ecc_loop, loopargs);
 	    gettimeofday(&tv1,NULL);
 		d = (tv1.tv_usec-tv.tv_usec)/(100000.0)+((tv1.tv_sec-tv.tv_sec));
-		count = loopargs->processed_count[algo_index];
+		//count = loopargs->processed_count[algo_index];
 	    fprintf(stderr,
 		    mr ? "+R8:%ld:%d:%.2f\n"
 		       : "%ld %d bit ecc genkey in %.2fs\n",
-		    count, test_ecc_curves_bits[testnum],
+		    count, test_ecc_curves_bits[loopargs->test_length],
 		    d); // R8 验签结果， +R8 : 运算次数 ： 位数： 耗时秒
 	    eccsign_results[testnum][2] = d / (double)count; // 每次验签运算耗时
 	    

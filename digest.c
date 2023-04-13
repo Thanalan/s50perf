@@ -8,11 +8,8 @@ static inline int build_hash_cmd (pce_op_data_t *opdata, enum pce_alg hash_alg,u
 {
 	pce_op_data_t *temp_op = NULL;
    	temp_op = opdata;
-	//temp_op->op_type = PCE_OP_TYPE_HASH;
     temp_op->session_handle = NULL;
     temp_op->packet_type = PCE_FULL_PACKET;
-
-   	//temp_op->op_type = PCE_OP_TYPE_HASH;
     temp_op->hash.alg = hash_alg;
 	
     temp_op->hash.mode = PCE_DIGEST_MODE_NORMAL;
@@ -23,44 +20,10 @@ static inline int build_hash_cmd (pce_op_data_t *opdata, enum pce_alg hash_alg,u
 	temp_op->hash.in_bytes = inlen;
     temp_op->hash.out = (uint64_t) out;
     temp_op->hash.digest_len = outlen;
-   
     temp_op->hash.dma_mode = 0;
-   // temp_op->hash.type = PCE_OP_TYPE_HASH;
-
 
 	return 0;
 }
-//函数返回值不为0则函数错误
-
-static inline int build_hmac_cmd(pce_op_data_t *opdata, enum pce_alg hash_alg,uint8_t *in, 
-						int inlen, uint8_t *out,int outlen ,uint8_t *key, int keysize)
-{
-		
-	pce_op_data_t *temp_op = NULL;
-	temp_op = opdata;
-	//temp_op->op_type = PCE_OP_TYPE_HASH;
-	temp_op->session_handle = NULL;
-	temp_op->packet_type = PCE_FULL_PACKET;
-	
-	//temp_op->op_type = PCE_OP_TYPE_HASH;
-	temp_op->hash.alg = hash_alg;
-
-	//hmac需要设置的成员,在正常模式中为NULL
-	temp_op->hash.mode = PCE_DIGEST_MODE_HMAC;
-	temp_op->hash.key_iv = (uint64_t)key;
-	temp_op->hash.key_bytes = keysize;
-		
-	temp_op->hash.in =(uint64_t) in;
-	temp_op->hash.in_bytes = inlen;
-	temp_op->hash.out =(uint64_t)  out;
-	temp_op->hash.digest_len = outlen;
-	   
-	temp_op->hash.dma_mode = 0;
-	//temp_op->hash.type = 0;
-	
-	return 0;
-}
-
 
 int test_hmac_loop(void *args)
 {
@@ -92,7 +55,6 @@ int test_hmac_loop(void *args)
 		hash_datas[i].hash.key_bytes = 0;
 		callback_context->callbackfunc = symcallback;//自定义回调函数
 		callback_context->op_tag = hash_datas;
-		//callback_context->complete = &loopargs->completions[i]; //设置为传入的信号量地址
 		callback_context[i].algo_index = loopargs->algo_index;
 		callback_context[i].test_num = loopargs->testnum;
 		callback_context[i].process_count = loopargs->processed_count;
@@ -132,11 +94,9 @@ int test_hash_loop(void *args)
 	int batch = loopargs->batch;
 
 	callback_context_t *callback_context = loopargs->callbacks;
-	//完成信号量进行同步用，防止出队和出队对于的opdata不一致的情况
 	hash_datas = loopargs->requests;
 		
 	for(i = 0; i < batch; i++){
-		//COMPLETION_INIT(&loopargs->completions[i]);
 		
 			//生成模板，之后会对具体值再进行修改
 		build_hash_cmd(&hash_datas[i], loopargs->hash_algo , src, loopargs->test_length, dst, 64 );
@@ -144,7 +104,6 @@ int test_hash_loop(void *args)
 		callback_context[i].callbackfunc = symcallback;//自定义回调函数
 		callback_context[i].op_tag = &hash_datas[i];
 		callback_context[i].algo_index = loopargs->algo_index;
-		//callback_context[i].test_num = loopargs->testnum;
 		callback_context[i].process_count = loopargs->processed_count;
 		
 		hash_datas[i].hash.tag = (uint64_t) (callback_context);
@@ -168,8 +127,6 @@ sem_t start_sem;
 
 void test_hash_perf(loopargs_t *loopargs)
 {
-    //int ret;
-   // int st;
     long count = 0;
     double d;
     int testnum = 0;
@@ -310,7 +267,6 @@ int test_hash_hit(const char *algo_name)
 	
 	algo_data_t *algo_data = (algo_data_t*)getHashMap(g_algo_hash_table, algo_name);
 	
-	//do_sym_or_hash[algo_data->algo_index] = 1;
 	
     return 0;
 }

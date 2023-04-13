@@ -3555,7 +3555,7 @@ static rsa_testvec_t rsa_tv_template[] = {
 	"\x74\xae\xb2\xd5\xd8\x80\xa8\x7e\xb7\xba\x38\xfb\xd2\x24\x81\x62"
 	"\x3e\x3d\x57\xa0\xef\x74\x76\xa6\x07\x3f\x2f\x7a\xc5\xa5\x2a\x0f",
 	},
-	/*{
+	{
 	.e_bitlen = 17,
 	.n_bitlen = 1024,
 	.d_bitlen = 1024,
@@ -3666,7 +3666,7 @@ static rsa_testvec_t rsa_tv_template[] = {
 	"\x58\x54\x74\x45\x2b\x4c\x63\x6d\x52\x46\x48\x4d\x57\x4f\x46\x74"
 	"\x6e\x53\x39\x56\x67\x41\x61\x59\x50\x41\x35\x76\x38\x0a\x41\x59"
 	"\x68\x71\x36\x31\x4b\x6a\x51\x77\x7a\x63\x76\x4c\x77\x42\x70\x42",
-	},*/
+	},
 };
 
 
@@ -3978,7 +3978,7 @@ static int test_rsa_loop(void *args)
 			
 		callback_context[i].callbackfunc = symcallback;//自定义回调函数
 		callback_context[i].op_tag = &rsa_datas[i];
-		callback_context[i].algo_index = ALGO_SM2_IDX;//先暂时使用SM2的索引
+		callback_context[i].algo_index = loopargs->algo_index;//先暂时使用SM2的索引
 		callback_context[i].test_num = loopargs->testnum;
 		callback_context[i].process_count = loopargs->processed_count;
 		
@@ -4008,30 +4008,17 @@ int test_hit_for_rsa(const char *algo_name)
 {
     int ret = -1;
 
-
     int i;
-    if (!strcmp(algo_name, "rsa")) {
+    if(getHashMap(g_algo_hash_table,algo_name) == NULL){
+		return -1;
+	}
+	
+	algo_data_t *algo_data = (algo_data_t*)getHashMap(g_algo_hash_table, algo_name);
 	for (i = 0; i < SM2_NUM; i++) {
 	    rsasign_doit[i] = rsaenc_doit[i] = 1;
 	}
-
-	ret = 0;
-    }
-
-    if (strcmp(algo_name, "rsasign") == 0) {
-	for (i = 0; i < SM2_NUM; i++)
-	    rsasign_doit[i] = 1;
-
-	ret = 0;
-    }
-
-    if (strcmp(algo_name, "rsaenc") == 0) {
-	for (i = 0; i < SM2_NUM; i++)
-	    rsaenc_doit[i] = 1;
-
-	ret = 0;
-    }
-
+    
+    return 0;
 
     return ret;
 }
@@ -4044,7 +4031,11 @@ void test_perf_for_rsa(loopargs_t *loopargs)
     double d;
     int testnum = 0;
 	loopargs->batch = cmd_option.batch;
-	int algo_index = ALGO_SM2_IDX;
+	thread_local_variables_t *tlv = (thread_local_variables_t*)pthread_getspecific(thread_key); //找到tlv的首地址
+	algo_data_t *algo_data = (algo_data_t*)getHashMap(g_algo_hash_table, tlv->algo_name);
+	
+	int algo_index = algo_data->algo_index;
+	loopargs->algo_index = algo_index;
     // test sm2 sign and verify
     for (testnum = 0; testnum < SM2_NUM; testnum++) {
 		st = 1;
@@ -4056,64 +4047,64 @@ void test_perf_for_rsa(loopargs_t *loopargs)
 		rsa_test_data_t *rsa_data = malloc(sizeof(rsa_test_data_t) * 2);
 		memset(rsa_data, 0, sizeof(rsa_test_data_t));
 		
-		_init_rsa_test_data(rsa_data,PCE_SECP192R1,PCE_ECDSA_SIGN);
+		_init_rsa_test_data(rsa_data,PCE_RSA_SIGN,loopargs->test_length);
 		
 		loopargs->rsa_data = rsa_data;
-		pkey_print_message("sign", "rsa", 0, test_rsa_curves_bits[testnum],
+		pkey_print_message("sign", "rsa", 0, loopargs->test_length,
 			       cmd_option.duration);
 		
 		loopargs->testnum = testnum;
 		loopargs->processed_count[algo_index] = 0;
-		sem_post(&start_sem);
+		//sem_post(&start_sem);
 		gettimeofday(&tv,NULL);	
 		count = run_benchmark(test_rsa_loop, loopargs);
 		gettimeofday(&tv1,NULL);
-		d = (tv1.tv_usec-tv.tv_usec)/(100000.0)+((tv1.tv_sec-tv.tv_sec));
-		count = loopargs->processed_count[algo_index];
+		d = (tv1.tv_usec-tv.tv_usec)/(100000.0) + ((tv1.tv_sec-tv.tv_sec));
+		//count = loopargs->processed_count[algo_index];
 	    fprintf(stderr,
 		    mr ? "+R7:%ld:%d:%.2f\n"
 		       : "%ld %d bit rsa signs in %.2fs \n",
-		    count, test_rsa_curves_bits[testnum], d);
+		    count, loopargs->test_length, d);
 	 	rsasign_results[testnum][0] = d / (double)count; // 每次签名运算耗时
 	
 
 	// verify性能测试
 		memset(rsa_data, 0, sizeof(rsa_test_data_t));
-		_init_rsa_test_data(rsa_data ,PCE_SECP192R1,PCE_ECDSA_VERIFY);
+		_init_rsa_test_data(rsa_data ,PCE_RSA_VERIFY, loopargs->test_length);
 	    pkey_print_message("verify", "rsa", 0,
-			       test_rsa_curves_bits[testnum],
+			       loopargs->test_length,
 			       cmd_option.duration);
 	    loopargs->processed_count[algo_index] = 0;
-		sem_post(&start_sem);
+		//sem_post(&start_sem);
 		gettimeofday(&tv,NULL);	
 	    count = run_benchmark(test_rsa_loop, loopargs);
 	    gettimeofday(&tv1,NULL);
 		d = (tv1.tv_usec-tv.tv_usec)/(100000.0)+((tv1.tv_sec-tv.tv_sec));
-		count = loopargs->processed_count[algo_index];
+		//count = loopargs->processed_count[algo_index];
 	    fprintf(stderr,
 		    mr ? "+R8:%ld:%d:%.2f\n"
 		       : "%ld %d bit rsa verify in %.2fs\n",
-		    count, test_rsa_curves_bits[testnum],
+		    count, loopargs->test_length,
 		    d); // R8 验签结果， +R8 : 运算次数 ： 位数： 耗时秒
 	    rsasign_results[testnum][1] = d / (double)count; // 每次验签运算耗时
 
 	// GENKEY 性能测试
 		memset(rsa_data, 0, sizeof(rsa_test_data_t));
-		_init_rsa_test_data(rsa_data,PCE_SECP192R1,PCE_ECC_KEY);
+		_init_rsa_test_data(rsa_data, PCE_RSA_KEY, loopargs->test_length);
 	    pkey_print_message("genkey", "rsa", 0,
-			       test_rsa_curves_bits[testnum],
+			       loopargs->test_length,
 			       cmd_option.duration);
 	   loopargs->processed_count[algo_index] = 0;
-		sem_post(&start_sem);
+		//sem_post(&start_sem);
 		gettimeofday(&tv,NULL);	
 	    count = run_benchmark(test_rsa_loop, loopargs);
 	    gettimeofday(&tv1,NULL);
 		d = (tv1.tv_usec-tv.tv_usec)/(100000.0)+((tv1.tv_sec-tv.tv_sec));
-		count = loopargs->processed_count[algo_index];
+		//count = loopargs->processed_count[algo_index];
 	    fprintf(stderr,
 		    mr ? "+R8:%ld:%d:%.2f\n"
 		       : "%ld %d bit rsa genkey in %.2fs\n",
-		    count, test_rsa_curves_bits[testnum],
+		    count,loopargs->test_length,
 		    d); // R8 验签结果， +R8 : 运算次数 ： 位数： 耗时秒
 	    rsasign_results[testnum][2] = d / (double)count; // 每次验签运算耗时
 	    
