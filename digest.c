@@ -144,7 +144,7 @@ int test_hash_loop(void *args)
 		callback_context[i].callbackfunc = symcallback;//自定义回调函数
 		callback_context[i].op_tag = &hash_datas[i];
 		callback_context[i].algo_index = loopargs->algo_index;
-		callback_context[i].test_num = loopargs->testnum;
+		//callback_context[i].test_num = loopargs->testnum;
 		callback_context[i].process_count = loopargs->processed_count;
 		
 		hash_datas[i].hash.tag = (uint64_t) (callback_context);
@@ -310,7 +310,7 @@ int test_hash_hit(const char *algo_name)
 	
 	algo_data_t *algo_data = (algo_data_t*)getHashMap(g_algo_hash_table, algo_name);
 	
-	do_sym_or_hash[algo_data->algo_index] = 1;
+	//do_sym_or_hash[algo_data->algo_index] = 1;
 	
     return 0;
 }

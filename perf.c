@@ -21,7 +21,6 @@
 #include "ecc.h"
 
 //全局变量定义
-int do_sym_or_hash[ALGO_SYM_NUM] = {0};
 
 // #define OPENSSL_NO_EC 0
 perf_callbacks global_perf_algo_list[];
@@ -49,13 +48,12 @@ int g_thread_num = 1; // 线程数量默认值
 int g_queue_num = 1;  //队列数量默认值
 int g_batch = 1;
 int g_queue_depth = QUEUE_DEPTH_256;
+int pr_header = 0;
 
 
 //处理多线程数据，改为三维数组，按照线程号索引进行打印结果。打印结果仍然为主线程
 double results[MAX_THREAD_NUM][ALGO_SYM_NUM][SIZE_NUM] = {0};
 double latency_results[MAX_THREAD_NUM][ALGO_SYM_NUM][SIZE_NUM]={0};
-int processed_count[ALGO_SYM_NUM]={0}; //计算当前成功完成处理的数量
-
 
 int lengths[SIZE_NUM] = {16,32, 64, 128, 256, 1024,  4 * 1024, 8192,16384};
 
@@ -162,6 +160,17 @@ algo_data_t algo_datas[] = {
 	{"rand", PCE_RANDOM, ALGO_RAND_IDX, ALGO_TYPE_RAND, 0},
 
 	//非对称加密
+	{"rsa-1024", PCE_RSA_KEY, ALGO_RSA_1024_IDX, ALGO_TYPE_ASYM, 0},
+	{"rsa-2048", PCE_RSA_KEY, ALGO_RSA_2048_IDX, ALGO_TYPE_ASYM, 0},
+	{"rsa-3072", PCE_RSA_KEY, ALGO_RSA_3072_IDX, ALGO_TYPE_ASYM, 0},
+	{"rsa-4096", PCE_RSA_KEY, ALGO_RSA_4096_IDX, ALGO_TYPE_ASYM, 0},
+	
+	{"ecc-192", PCE_ECC_KEY, ALGO_ECC_SECP192R1_IDX, ALGO_TYPE_ASYM, 0},
+	{"ecc-224", PCE_ECC_KEY, ALGO_ECC_SECP224R1_IDX, ALGO_TYPE_ASYM, 0},
+	{"ecc-256", PCE_ECC_KEY, ALGO_ECC_SECP256R1_IDX, ALGO_TYPE_ASYM, 0},
+	{"ecc-384", PCE_ECC_KEY, ALGO_ECC_SECP384R1_IDX, ALGO_TYPE_ASYM, 0},
+	{"ecc-521", PCE_ECC_KEY, ALGO_ECC_SECP521R1_IDX, ALGO_TYPE_ASYM, 0},
+	
 	{"sm2",PCE_SM2_KEY,ALGO_SM2_IDX,ALGO_TYPE_ASYM,0},
 	{NULL, 0 , 0, 0}
 };
@@ -464,7 +473,7 @@ int polute_doit_flag(char *algo_name)
 		//algo_data_t *algo_data2 = (algo_data_t*)getHashMap(g_algo_hash_table, "asa");
 	
 	if(algo_data->algo_type != ALGO_TYPE_ASYM) {//如果不是非对称算法，则是对称类或者摘要算法或者aead算法
-		do_sym_or_hash[algo_data->algo_index] = 1; //完成原有test_hash_hit函数的功能
+		pr_header++; //完成原有test_hash_hit函数的功能
 		return 0;
 	}
 	
@@ -845,13 +854,13 @@ int show_results(int pr_header) //多线程输出结果不正确
 				printf(mr?":%d":"%7dbytes",lengths[testnum]);
 			  //if (results[i][k][testnum] > 10000 && !mr){
 			  if (results[i][k][testnum] > 10000 && !mr){
-			  		printf(" %11.2f", g_batch*results[i][k][testnum] / (1e3));
-					printf(" %11.2f",g_batch*results[i][k][testnum]*8/(1e6));
+			  		printf(" %11.2f", g_batch*results[i][k][testnum]*lengths[testnum] / (1e3));
+					printf(" %11.2f",g_batch*results[i][k][testnum]*lengths[testnum]*8/(1e6));
 					printf("\n");
 					}
 				else{
-					printf(mr ? ":%.2f" : " %11.2f ", g_batch*results[i][k][testnum]/(1e3));
-					printf(mr ? ":%.2f" : " %11.2f ", g_batch*results[i][k][testnum]*8/(1e6));
+					printf(mr ? ":%.2f" : " %11.2f ", g_batch*results[i][k][testnum]*lengths[testnum]/(1e3));
+					printf(mr ? ":%.2f" : " %11.2f ", g_batch*results[i][k][testnum]*lengths[testnum]*8/(1e6));
 					printf("\n");}
 			}
 			printf("\n");
@@ -884,7 +893,7 @@ int show_latency_results(int pr_header)
 		for (test_num = 0; test_num < SIZE_NUM; test_num++) {
 			
     		k = thread_run_algo[i];
-            sum[test_num] += latency_results[i][k][test_num];
+            sum[test_num] += (1.0 / results[i][k][test_num]);
     		
 			}
 	}
@@ -954,6 +963,8 @@ static int set_global_variables()
 	return 0;
 }
 
+
+
 int main(int argc, char **argv)
 {
     loopargs_t *loopargs = NULL;
@@ -961,7 +972,7 @@ int main(int argc, char **argv)
     int i;
     int ret = 0;
     int multi = 0;
-    int pr_header = 0;
+
 	int queue_num = 1; //目前队列对数量为一个
 	int thread_num = 1; //默认为一个线程
 	int status = 0;
@@ -997,12 +1008,7 @@ int main(int argc, char **argv)
 	init_queue_from_device(queue_num);
 	
 	//创建轮询响应队列的线程
-	//running = 1; 
 	create_poll_threads(pollingthreads);
-
-    for (i = 0; i < ALGO_SYM_NUM; i++)
-        if (do_sym_or_hash[i])
-            pr_header++;
 
     multi = cmd_option.multi;
     if (multi && do_multi(multi)) {

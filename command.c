@@ -245,6 +245,12 @@ static int perf_cmd_default_parser(perf_cmd_args *opts, const char *option,
             CLOG_LOG_ERR("Parse option %s %s error\r\n", option, arg);
             return -1;
         }
+	}else if (0 == strcmp(option, "length")) {
+        opts->test_length  = strtol(arg, &eptr, 0);
+        if (eptr && *eptr != '\0') {
+            CLOG_LOG_ERR("Parse option %s %s error\r\n", option, arg);
+            return -1;
+        }
 	}else {
         CLOG_LOG_ERR("Unsupported option %s value %s\r\n", option, arg);
         return -1;
@@ -327,8 +333,12 @@ static void perf_cmd_register(void)
 	
 	INIT_OPTION("mix", perf_cmd_default_parser, required_argument,
                 " --mix : The mixed mode\n");
+	
 	INIT_OPTION("depth", perf_cmd_default_parser, required_argument,
                 " --depth : The queue depth\n");
+	
+	INIT_OPTION("length", perf_cmd_default_parser, required_argument,
+                " --length : The test length\n");
 #undef INIT_OPTION
 }
 

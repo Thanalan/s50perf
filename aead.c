@@ -296,7 +296,7 @@ int test_aead_hit(const char *algo_name)
 	
 	algo_data_t *algo_data = (algo_data_t*)getHashMap(g_algo_hash_table, algo_name);
 
-	do_sym_or_hash[algo_data->algo_index] = 1;
+	//do_sym_or_hash[algo_data->algo_index] = 1;
 	
     return 0;
 }

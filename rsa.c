@@ -3758,27 +3758,24 @@ int init_rsa_data(loopargs_t *loopargs, int loopargs_len)
 
 static void _free_rsa_test_data(rsa_test_data_t *test_data)
 {
-    /*if (test_data->e_addr)
-		pce_free_mem(test_data->e_addr);
+    if (test_data->e)
+		pce_free_mem(test_data->e);
 	
-	if (test_data->d_addr)
-		pce_free_mem(test_data->d_addr);
+	if (test_data->d)
+		pce_free_mem(test_data->d);
 
-	if (test_data->n_addr)
-		pce_free_mem(test_data->n_addr);
+	if (test_data->n)
+		pce_free_mem(test_data->n);
 
-	if (test_data->result_addr)
-		pce_free_mem(test_data->result_addr);
+	if (test_data->result)
+		pce_free_mem(test_data->result);
 	
-	if (test_data->data_addr)
-		pce_free_mem(test_data->data_addr);
+	if (test_data->src)
+		pce_free_mem(test_data->src);
 
-	if (test_data->key_addr)
-		pce_free_mem(test_data->key_addr);
+	if (test_data->swap_ptr)
+		pce_free_mem(test_data->swap_ptr);
 	
-	if (test_data->signature_addr)
-		pce_free_mem(test_data->signature_addr);
-    */
 }
 
 void free_rsa_data(loopargs_t *loopargs, int loopargs_len)

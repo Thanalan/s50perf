@@ -818,25 +818,23 @@ int init_ecc_data(loopargs_t *loopargs, int loopargs_len)
 
 static void _free_ecc_test_data(ecc_test_data_t *test_data)
 {
-    /*if (test_data->e_addr)
-		pce_free_mem(test_data->e_addr);
 	
-	if (test_data->pub_key_addr)
-		pce_free_mem(test_data->pub_key_addr);
+	if (test_data->pubkey)
+		pce_free_mem(test_data->pubkey);
 
-	if (test_data->priv_key_addr)
-		pce_free_mem(test_data->priv_key_addr);
+	if (test_data->privkey)
+		pce_free_mem(test_data->privkey);
 
-	if (test_data->result_addr)
-		pce_free_mem(test_data->result_addr);
+	if (test_data->result)
+		pce_free_mem(test_data->result);
 	
-	if (test_data->peer_pub_key_addr)
-		pce_free_mem(test_data->peer_pub_key_addr);
+	/*if (test_data->peer_pub_key_addr)
+		pce_free_mem(test_data->peer_pub_key_addr);*/
 
 	
-	if (test_data->e_signature_addr)
-		pce_free_mem(test_data->e_signature_addr);
-		*/
+	if (test_data->src)
+		pce_free_mem(test_data->src);
+		
 }
 
 void free_ecc_data(loopargs_t *loopargs, int loopargs_len)
@@ -1011,6 +1009,7 @@ void test_perf_for_ecc(loopargs_t *loopargs)
     int testnum = 0;
 	loopargs->batch = cmd_option.batch;
 	int algo_index = ALGO_SM2_IDX;
+	ecc_test_data_t *ecc_data = malloc(sizeof(ecc_test_data_t) * 2);
     // test sm2 sign and verify
     for (testnum = 0; testnum < SM2_NUM; testnum++) {
 		st = 1;
@@ -1019,7 +1018,7 @@ void test_perf_for_ecc(loopargs_t *loopargs)
 		}
 	
 		// SIGN性能测试
-		ecc_test_data_t *ecc_data = malloc(sizeof(ecc_test_data_t) * 2);
+		
 		memset(ecc_data, 0, sizeof(ecc_test_data_t));
 		
 		_init_ecc_test_data(ecc_data,PCE_SECP192R1,PCE_ECDSA_SIGN);
@@ -1085,7 +1084,7 @@ void test_perf_for_ecc(loopargs_t *loopargs)
 	    
 	
 	}
-
+	_free_ecc_test_data(ecc_data);
 	
 }
 

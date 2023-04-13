@@ -41,6 +41,7 @@ typedef struct {
 	int     linklist; //分片模式
 	int     batch;
 	int		depth;
+	int		test_length;
 } perf_cmd_args;
 
 int perf_cmd_parse(perf_cmd_args *results, int argc, char **argv);

@@ -12,9 +12,9 @@ void print_result(int alg, int run_no, int count, double time_used,int thread_id
             algo_datas[alg].algo, time_used);
 	//}
 	
-    results[thread_id][alg][run_no] =
-        ((double)count) * lengths[run_no] / time_used; // 每秒处理的字节数
-    latency_results[thread_id][alg][run_no] = time_used / (((double)count)); 
+    //results[thread_id][alg][run_no] = ((double)count) * lengths[run_no] / time_used; // 每秒处理的字节数
+   // latency_results[thread_id][alg][run_no] = time_used / (((double)count)); 
+	results[thread_id][alg][run_no] = ((double)count) / time_used;
         
 }
 

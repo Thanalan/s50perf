@@ -135,6 +135,16 @@ enum ALGO_IDX {
 	ALGO_RAND_IDX,
 
 	//asym cipher
+	ALGO_RSA_1024_IDX,
+	ALGO_RSA_2048_IDX,
+	ALGO_RSA_3072_IDX,
+	ALGO_RSA_4096_IDX,
+
+	ALGO_ECC_SECP192R1_IDX,
+	ALGO_ECC_SECP224R1_IDX,
+	ALGO_ECC_SECP256R1_IDX,
+	ALGO_ECC_SECP384R1_IDX,
+	ALGO_ECC_SECP521R1_IDX,
 	ALGO_SM2_IDX,
 	//结束
 	ALGO_SYM_NUM,
@@ -190,12 +200,7 @@ extern perf_cmd_args cmd_option;
 
 extern int thread_run_algo[MAX_THREAD_NUM] ;
 
-extern double results[MAX_THREAD_NUM][ALGO_SYM_NUM][SIZE_NUM];
-extern double latency_results[MAX_THREAD_NUM][ALGO_SYM_NUM][SIZE_NUM];
-
-extern int do_sym_or_hash[ALGO_SYM_NUM];
-extern int processed_count[ALGO_SYM_NUM];
-
+extern double results[MAX_THREAD_NUM][ALGO_SYM_NUM][SIZE_NUM]; //存放处理的数量
 
 extern int ceu_node;
 extern int mem_node;
@@ -211,60 +216,12 @@ extern volatile int stop_poll;
 extern sem_t start_sem;
 extern sem_t end_sem;
 extern sem_t end_poll;
-extern volatile double used_time;
 extern struct	timeval    tv;
 extern struct  timeval	tv1;
-
-
-struct completion_struct
-{
-    sem_t semaphore;
-	int i;
-};
-
-/* Use semaphores to signal completion of events */
-#define COMPLETION_STRUCT completion_struct
-
-#define COMPLETION_INIT(s)  sem_init(&((s)->semaphore), 0, 0);
-//sem_init(&((s)->semaphore), 0, 0);
-
-#define COMPLETION_WAIT(s, timeout) (sem_wait(&((s)->semaphore)) == 0)
-
-#define COMPLETE(s) sem_post(&((s)->semaphore))
-
-#define COMPLETION_DESTROY(s) sem_destroy(&((s)->semaphore))
-
-#define PRINT_ERR(args...)                                                     \
-    do                                                                         \
-    {                                                                          \
-        printf("%s, %s():%d ", __FILE__, __func__, __LINE__);                   \
-        printf(args);                                                           \
-    } while (0)
-
-#define PRINT_DBG(args...)                                                 \
-    do                                                                     \
-    {                                                                      \
-        printf("%s(): ", __func__);                                        \
-        printf(args);                                                      \
-        fflush(stdout);                                                    \
-    }                                                                      \
-     while (0)
-
-
-
-//container_of宏,通过已知的一个数据结构成员指针ptr，数据结构类型type,获取结构体首地址
-//#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
-#define container_of(ptr, type, member) ({              \
-	const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
-	(type *)( (char *)__mptr - offsetof(type,member) );})
-
-
-
 
 typedef struct callback_t{
 	void (*callbackfunc)(void *pCallbackTag);
 	void *op_tag;
-	struct COMPLETION_STRUCT *complete; //信号量，用于同步完成状态
 	int algo_index; //索引完成计数
 	int test_num;
 	int thread_id;
@@ -292,7 +249,7 @@ typedef struct {
 	pce_op_data_t **op_datas;
 	int batch;
 	int algo_index;
-	int testnum;
+	int testnum; //测试长度
 	int *processed_count;
 } loopargs_t;
 
