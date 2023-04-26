@@ -119,7 +119,7 @@ void pce_lib_exit(void){
 }
 
 void *pce_alloc_mem(int numa_node, uint32_t size){
-	//fprintf(stderr, "func:%s in file:%s\n",__func__,__FILE__);
+	fprintf(stderr, "func:%s in file:%s\n",__func__,__FILE__);
 	usleep(1000);
 	return malloc(size);
 	return NULL;
@@ -129,7 +129,7 @@ void *pce_alloc_mem(int numa_node, uint32_t size){
 
 
 void pce_free_mem(void *buf){
-	//fprintf(stderr, "func:%s in file:%s\n",__func__,__FILE__);
+	fprintf(stderr, "func:%s in file:%s\n",__func__,__FILE__);
 	free(buf);
 	usleep(1000);
 
@@ -139,7 +139,7 @@ void pce_free_mem(void *buf){
 uint64_t pce_mem_virt2iova(const void *vaddr){
 	fprintf(stderr, "func:%s in file:%s\n",__func__,__FILE__);
 	usleep(1000);
-	return vaddr;
+	return 0;
 
 }
 

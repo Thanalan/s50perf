@@ -1,20 +1,23 @@
 #include <unistd.h>
 #include "print.h"
+
+double used_times[MAX_THREAD_NUM] = {0};
+
 void print_result(int alg, int run_no, int count, double time_used,int thread_id)
 {
-	
+    
     if (count == -1) {
         fprintf(stderr, "EVP error!\n");
         exit(1);
     }
-	//if(g_thread_num == 1){
-    fprintf(stderr, mr ? "+R:%d:%s:%f\n" : "%d %s's in %.2fs\n", count,
+    //if(g_thread_num == 1){
+    fprintf(stderr, mr ? "+R:%.0f:%s:%f\n" : "%.0f %s's in %.2fs\n", results[thread_id][run_no],
             algo_datas[alg].algo, time_used);
-	//}
-	
+    //}
     //results[thread_id][alg][run_no] = ((double)count) * lengths[run_no] / time_used; // 每秒处理的字节数
    // latency_results[thread_id][alg][run_no] = time_used / (((double)count)); 
-	results[thread_id][alg][run_no] = ((double)count) / time_used;
+    //results[thread_id][alg][run_no] = ((double)count) / time_used;
+    used_times[thread_id] = time_used;
         
 }
 
@@ -24,11 +27,11 @@ void print_result(int alg, int run_no, int count, double time_used,int thread_id
 void print_message(const char *s, long num, int length, int sec_time)
 {
     (void)num;
-	//if(g_thread_num == 1){
+    //if(g_thread_num == 1){
     fprintf(stderr,
             mr ? "+DT:%s:%d:%d\n" : "Doing %s for %ds on %d size blocks: ", s,
             sec_time, length);
-		//}
+        //}
     (void)fflush(stderr);
     alarm(sec_time);
 }

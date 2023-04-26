@@ -3,13 +3,13 @@
 
 #include "perf.h"
 
-int init_rsa_data(loopargs_t *loopargs, int loopargs_len);
+//int init_rsa_data(loopargs_t *loopargs, int loopargs_len);
 
-void free_rsa_data(loopargs_t *loopargs, int loopargs_len);
+//void free_rsa_data(loopargs_t *loopargs, int loopargs_len);
 
 void test_perf_for_rsa(loopargs_t *loopargs);
 
-void show_results_for_rsa(void);
+void show_results_for_rsa(uint16_t thread_id);
 
 int test_hit_for_rsa(const char *algo_name);
 

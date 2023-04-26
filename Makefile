@@ -9,8 +9,7 @@
 
 INCLUDE_DIR?=../include
 TARGET_LIB_DIR?=../lib
-CFLAGS += -I$(INCLUDE_DIR)  -O0 -g  -Wno-int-conversion 
-
+CFLAGS += -I$(INCLUDE_DIR)  -O2 -g -Wno-int-conversion  -Wno-pointer-sign 
 #CFLAGS += $(shell pkg-config --cflags libpce)
 
 LIBS += -L$(TARGET_LIB_DIR) -lpthread 

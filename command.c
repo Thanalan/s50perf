@@ -211,47 +211,55 @@ static int perf_cmd_default_parser(perf_cmd_args *opts, const char *option,
         }
     } else if (0 == strcmp(option, "latency")) {
         opts->latency = 1;
-    } else if (0 == strcmp(option, "thread")) {
+    }else if (0 == strcmp(option, "list")) {
+        opts->list = 1;
+    }else if (0 == strcmp(option, "thread")) {
         opts->thread_num  = strtol(arg, &eptr, 0);
         if (eptr && *eptr != '\0') {
             CLOG_LOG_ERR("Parse option %s %s error\r\n", option, arg);
             return -1;
         }
-	}else if (0 == strcmp(option, "queue")) {
+    }else if (0 == strcmp(option, "queue")) {
         opts->queue_num  = strtol(arg, &eptr, 0);
         if (eptr && *eptr != '\0') {
             CLOG_LOG_ERR("Parse option %s %s error\r\n", option, arg);
             return -1;
         }
-	}else if (0 == strcmp(option, "linklist")) {
+    }else if (0 == strcmp(option, "linklist")) {
         opts->linklist  = strtol(arg, &eptr, 0);
         if (eptr && *eptr != '\0') {
             CLOG_LOG_ERR("Parse option %s %s error\r\n", option, arg);
             return -1;
         }
-		
-	}else if (0 == strcmp(option, "mix")) {
+        
+    }else if (0 == strcmp(option, "mix")) {
         opts->mixed  = arg;
-		
-	}else if (0 == strcmp(option, "burst")) {
+        
+    }else if (0 == strcmp(option, "burst")) {
         opts->batch  = strtol(arg, &eptr, 0);
         if (eptr && *eptr != '\0') {
             CLOG_LOG_ERR("Parse option %s %s error\r\n", option, arg);
             return -1;
         }
-	}else if (0 == strcmp(option, "depth")) {
+    }else if (0 == strcmp(option, "depth")) {
         opts->depth  = strtol(arg, &eptr, 0);
         if (eptr && *eptr != '\0') {
             CLOG_LOG_ERR("Parse option %s %s error\r\n", option, arg);
             return -1;
         }
-	}else if (0 == strcmp(option, "length")) {
+    }else if (0 == strcmp(option, "length")) {
         opts->test_length  = strtol(arg, &eptr, 0);
         if (eptr && *eptr != '\0') {
             CLOG_LOG_ERR("Parse option %s %s error\r\n", option, arg);
             return -1;
         }
-	}else {
+    }else if (0 == strcmp(option, "numa")) {
+        opts->numa_node  = strtol(arg, &eptr, 0);
+        if (eptr && *eptr != '\0') {
+            CLOG_LOG_ERR("Parse option %s %s error\r\n", option, arg);
+            return -1;
+        }
+    }else {
         CLOG_LOG_ERR("Unsupported option %s value %s\r\n", option, arg);
         return -1;
     }
@@ -315,30 +323,37 @@ static void perf_cmd_register(void)
 
     INIT_OPTION("help", perf_cmd_default_parser, no_argument,
                 " --help : Print this helps\n");
-	
-	INIT_OPTION("thread", perf_cmd_default_parser, required_argument,
+    
+    INIT_OPTION("thread", perf_cmd_default_parser, required_argument,
                 " --thread : Test thread number, default 1\n");
-	
-	INIT_OPTION("queue", perf_cmd_default_parser, required_argument,
+    
+    INIT_OPTION("queue", perf_cmd_default_parser, required_argument,
                 " --queue : Test queue number, default 1\n");
-	
-	INIT_OPTION("linklist", perf_cmd_default_parser, required_argument,
+    
+    INIT_OPTION("linklist", perf_cmd_default_parser, required_argument,
                 " --linklist : Linklist number, default 2\n");
-	
-	INIT_OPTION("latency", perf_cmd_default_parser, no_argument,
+    
+    INIT_OPTION("latency", perf_cmd_default_parser, no_argument,
                 " --latency : Print latency result\n");
-	
-	INIT_OPTION("burst", perf_cmd_default_parser, required_argument,
+    
+    INIT_OPTION("burst", perf_cmd_default_parser, required_argument,
                 " --burst : The number of request sent at a time\n");
-	
-	INIT_OPTION("mix", perf_cmd_default_parser, required_argument,
+    
+    INIT_OPTION("mix", perf_cmd_default_parser, required_argument,
                 " --mix : The mixed mode\n");
-	
-	INIT_OPTION("depth", perf_cmd_default_parser, required_argument,
+    
+    INIT_OPTION("depth", perf_cmd_default_parser, required_argument,
                 " --depth : The queue depth\n");
-	
-	INIT_OPTION("length", perf_cmd_default_parser, required_argument,
+    
+    INIT_OPTION("length", perf_cmd_default_parser, required_argument,
                 " --length : The test length\n");
+    
+    INIT_OPTION("numa", perf_cmd_default_parser, required_argument,
+                " --numa : Set numa node\n");
+    
+    INIT_OPTION("list", perf_cmd_default_parser, no_argument,
+                " --list : List all supported algorithms\n");
+    
 #undef INIT_OPTION
 }
 
@@ -355,9 +370,10 @@ int perf_cmd_parse(perf_cmd_args *results, int argc, char **argv)
     memset(results, 0, sizeof(perf_cmd_args));
     results->duration = 1;
     results->mode = "ecb";
-	results->thread_num = 1;
-	results->queue_num = 1;
-	results->batch = 1;
+    results->thread_num = 1;
+    results->queue_num = 1;
+    results->batch = 1;
+    results->numa_node = 0;
 
     return cmd_parse(results, argc, argv);
 }

@@ -33,7 +33,7 @@ typedef struct {
     uint16_t op; // op 0:encrypt 1:decrypt
     uint16_t duration;
     uint16_t multi;
-    uint16_t generic; // generic 0:ce 1:generic
+    uint16_t list; // generic 0:ce 1:generic
     int 	thread_num; //线程数量
 	int     queue_num; //队列数量
 	char 	*mixed;   //混合模式
@@ -42,6 +42,7 @@ typedef struct {
 	int     batch;
 	int		depth;
 	int		test_length;
+	int		numa_node;
 } perf_cmd_args;
 
 int perf_cmd_parse(perf_cmd_args *results, int argc, char **argv);

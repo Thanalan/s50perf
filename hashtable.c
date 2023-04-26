@@ -19,13 +19,13 @@ static unsigned int BKDRHash(const char *str)
 }
 
 //hash值长度取模最后获取实际位置的下标
-static  unsigned int defaultHashCode(HashMap hashMap, const char * key){
+static  unsigned int default_hash_code(hash_map hashMap, const char * key){
     return BKDRHash(key)% hashMap.capacity;
 }
 
-HashMap *createHashMap(int capacity) {
+hash_map *create_hash_map(int capacity) {
     //创建哈希表
-    HashMap *hashMap= (HashMap *)malloc(sizeof(HashMap));
+    hash_map *hashMap= (hash_map *)malloc(sizeof(hash_map));
     //创建存储区域
     if(capacity<10){
         capacity=10;
@@ -40,7 +40,7 @@ HashMap *createHashMap(int capacity) {
 }
 
 //扩容基数
-static int  expansionBase( HashMap *hashMap){
+static int  expansion_base( hash_map *hashMap){
     int len = hashMap->capacity;
     int dilatationCount= hashMap->dilatationCount;
     hashMap->dilatationSum++;
@@ -75,11 +75,11 @@ static int  expansionBase( HashMap *hashMap){
 }
 
 //扩容Map集合
-static  void dilatationHash(HashMap *hashMap){
+static  void dilatation_hash(hash_map *hashMap){
     //原来的容量
     int capacity = hashMap->capacity;
     //扩容后的容量
-    hashMap->capacity=expansionBase(hashMap);
+    hashMap->capacity=expansion_base(hashMap);
     //节点长度清空
     hashMap->nodeLen=0;
     //创建新的存储区域
@@ -89,7 +89,7 @@ static  void dilatationHash(HashMap *hashMap){
         Entry *entry=hashMap->list[i];
         if(entry!=NULL){
             //获取新的存储区域的下标
-            unsigned int newIndex=defaultHashCode(*hashMap,entry->key);
+            unsigned int newIndex=default_hash_code(*hashMap,entry->key);
             if(newList[newIndex]==NULL){
                 Entry *newEntry = (Entry *)malloc(sizeof(Entry));
                 newEntry->key = entry->key;
@@ -111,7 +111,7 @@ static  void dilatationHash(HashMap *hashMap){
                 Entry *nextEntry=entry->next;
                 while(nextEntry!=NULL){
                     //获取新的存储区域的下标
-                    unsigned int newIndex=defaultHashCode(*hashMap,nextEntry->key);
+                    unsigned int newIndex=default_hash_code(*hashMap,nextEntry->key);
                     if(newList[newIndex]==NULL){
                         Entry *newEntry = (Entry *)malloc(sizeof(Entry));
                         newEntry->key = nextEntry->key;
@@ -139,13 +139,13 @@ static  void dilatationHash(HashMap *hashMap){
 }
 
 //放入元素
-void putHashMap(HashMap *hashMap, char *key, void *value) {
+void put_hash_map(hash_map *hashMap, char *key, void *value) {
     //判断是否需要扩容
     if(hashMap->nodeLen==hashMap->capacity){
-        dilatationHash(hashMap);
+        dilatation_hash(hashMap);
     }
     //获取hash值
-    unsigned int hashCode = defaultHashCode(*hashMap, key);
+    unsigned int hashCode = default_hash_code(*hashMap, key);
     //获取节点
     Entry *entry = hashMap->list[hashCode];
 
@@ -187,21 +187,21 @@ void putHashMap(HashMap *hashMap, char *key, void *value) {
 
 }
 
-void printHashMap(HashMap *hashMap) {
+void print_hash_map(hash_map *hashMap) {
     for (int i = 0; i < hashMap->capacity; i++) {
         Entry *entry = hashMap->list[i];
         while (entry != NULL) {
             printf("%s:%p\n", entry->key, entry->value); //此处代码有修改
-			//printf("%s:%s\n", entry->key, entry->value);
+            //printf("%s:%s\n", entry->key, entry->value);
             entry = entry->next;
         }
     }
 }
 
 //获取Map集合中的指定元素
-void *getHashMap(HashMap *hashMap,const char *key) {
+void *get_hash_map(hash_map *hashMap,const char *key) {
     //获取hash值
-    unsigned int hashCode = defaultHashCode(*hashMap, key);
+    unsigned int hashCode = default_hash_code(*hashMap, key);
     //获取节点
     Entry *entry = hashMap->list[hashCode];
     //如果节点是空的那么直接返回
@@ -224,9 +224,9 @@ void *getHashMap(HashMap *hashMap,const char *key) {
 }
 
 //判断键是否存在
-boolean containsKey(HashMap *hashMap, char *key) {
+boolean contains_key(hash_map *hashMap, char *key) {
     //获取hash值
-    unsigned int hashCode = defaultHashCode(*hashMap, key);
+    unsigned int hashCode = default_hash_code(*hashMap, key);
     //获取节点
     Entry *entry = hashMap->list[hashCode];
     //如果节点是空的那么直接返回FALSE
@@ -249,9 +249,9 @@ boolean containsKey(HashMap *hashMap, char *key) {
 }
 
 //删除Map集合中的指定元素
-void removeHashMap(HashMap *hashMap, char *key) {
+void remove_hash_map(hash_map *hashMap, char *key) {
     //获取hash值
-    unsigned int hashCode = defaultHashCode(*hashMap, key);
+    unsigned int hashCode = default_hash_code(*hashMap, key);
     //获取节点
     Entry *entry = hashMap->list[hashCode];
     //如果节点是空的那么直接返回
@@ -281,9 +281,9 @@ void removeHashMap(HashMap *hashMap, char *key) {
 
 //修改Map集合中的指定元素
 
-void updateHashMap(HashMap *hashMap, char *key, void *value) {
+void update_hash_map(hash_map *hashMap, char *key, void *value) {
     //获取hash值
-    unsigned int hashCode = defaultHashCode(*hashMap, key);
+    unsigned int hashCode = default_hash_code(*hashMap, key);
     //获取节点
     Entry *entry = hashMap->list[hashCode];
     //如果节点是空的那么直接返回
@@ -307,9 +307,9 @@ void updateHashMap(HashMap *hashMap, char *key, void *value) {
 }
 //
 //迭代器
-
-HashMapIterator *createHashMapIterator(HashMap *hashMap){
-    HashMapIterator *hashMapIterator= malloc(sizeof(HashMapIterator));;
+#if 0
+hash_mapIterator *create_hash_map_iterator(hash_map *hashMap){
+    hash_mapIterator *hashMapIterator= malloc(sizeof(hash_mapIterator));;
     hashMapIterator->hashMap = hashMap;
     hashMapIterator->count= 0;//迭代次数
     hashMapIterator->index= 0;//迭代位置
@@ -318,12 +318,12 @@ HashMapIterator *createHashMapIterator(HashMap *hashMap){
     return hashMapIterator;
 }
 
-boolean hasNextHashMapIterator(HashMapIterator *iterator){
+boolean has_next_hash_map_iterator(hash_mapIterator *iterator){
     return iterator->count < iterator->hashMap->size ? TRUE : FALSE;
 }
 
-Entry *nextHashMapIterator(HashMapIterator *iterator) {
-    if (hasNextHashMapIterator(iterator)) {
+Entry *next_hash_map_iterator(hash_mapIterator *iterator) {
+    if (has_next_hash_map_iterator(iterator)) {
         //如果节点中存在hash冲突链表那么就迭代链表
         if(iterator->nextEntry!=NULL){//如果下次迭代节点不为空,那么直接返回下次迭代节点
             Entry *entry = iterator->nextEntry;
@@ -358,12 +358,12 @@ Entry *nextHashMapIterator(HashMapIterator *iterator) {
 //需要借助我之前文件写的List集合,有兴趣的可以去看看
 
 //获取所有的key ,返回一个自定义的List集合
-CharList *getKeys(HashMap *hashMap){
+CharList *get_keys(hash_map *hashMap){
 
     CharList *pCharlist = createCharList(10);
-    HashMapIterator *pIterator = createHashMapIterator(hashMap);
-    while (hasNextHashMapIterator(pIterator)) {
-        Entry *entry = nextHashMapIterator(pIterator);
+    hash_mapIterator *pIterator = create_hash_map_iterator(hashMap);
+    while (has_next_hash_map_iterator(pIterator)) {
+        Entry *entry = next_hash_map_iterator(pIterator);
         addCharList(pCharlist,entry->key); //此处代码有修改
         //addCharList(&pCharlist,entry->key); //此处代码有修改
     }
@@ -373,11 +373,11 @@ CharList *getKeys(HashMap *hashMap){
 //获取所有的value
 
 //获取所有的value,返回一个自定义的List集合
-CharList *getValues(HashMap *hashMap){
+CharList *get_values(hash_map *hashMap){
     CharList *pCharlist = createCharList(10);
-    HashMapIterator *pIterator = createHashMapIterator(hashMap);
-    while (hasNextHashMapIterator(pIterator)) {
-        Entry *entry = nextHashMapIterator(pIterator);
+    hash_mapIterator *pIterator = create_hash_map_iterator(hashMap);
+    while (has_next_hash_map_iterator(pIterator)) {
+        Entry *entry = next_hash_map_iterator(pIterator);
         addCharList(pCharlist,entry->value);
 	//addCharList(&pCharlist,entry->key); //此处代码有修改
     }
@@ -386,114 +386,115 @@ CharList *getValues(HashMap *hashMap){
 
 //复制一个Map
 
-HashMap *copyHashMap(HashMap *hashMap){
-    HashMap *pHashMap = createHashMap(hashMap->capacity);
-    HashMapIterator *pIterator = createHashMapIterator(hashMap);
-    while (hasNextHashMapIterator(pIterator)) {
-        Entry *entry = nextHashMapIterator(pIterator);
-        putHashMap(pHashMap,entry->key,entry->value);
+hash_map *copy_hash_map(hash_map *hashMap){
+    hash_map *phash_map = create_hash_map(hashMap->capacity);
+    hash_mapIterator *pIterator = create_hash_map_iterator(hashMap);
+    while (has_next_hash_map_iterator(pIterator)) {
+        Entry *entry = next_hash_map_iterator(pIterator);
+        put_hash_map(phash_map,entry->key,entry->value);
     }
-    return pHashMap;
+    return phash_map;
 }
 
 //将一个map集合合并到另一个map集合里
 
 //将一个map集合,合并到另一个map集合里   hashMap2合并到hashMap1
-void mergeHashMap(HashMap *hashMap1,HashMap *hashMap2){
-    HashMapIterator *pIterator = createHashMapIterator(hashMap2);
-    while (hasNextHashMapIterator(pIterator)) {
-        Entry *entry = nextHashMapIterator(pIterator);
-        putHashMap(hashMap1,entry->key,entry->value);
+void merge_hash_map(hash_map *hashMap1,hash_map *hashMap2){
+    hash_mapIterator *pIterator = create_hash_map_iterator(hashMap2);
+    while (has_next_hash_map_iterator(pIterator)) {
+        Entry *entry = next_hash_map_iterator(pIterator);
+        put_hash_map(hashMap1,entry->key,entry->value);
     }
 }
 
 //合并两个Map集合,返回一个新的Map集合
 
-HashMap *mergeHashMapNewMap(HashMap *hashMap1,HashMap *hashMap2){
-    HashMap *pHashMap = createHashMap(hashMap1->capacity+hashMap2->capacity);
-    HashMapIterator *pIterator1 = createHashMapIterator(hashMap1);
-    while (hasNextHashMapIterator(pIterator1)) {
-        Entry *entry = nextHashMapIterator(pIterator1);
-        putHashMap(pHashMap,entry->key,entry->value);
+hash_map *merge_hash_map_new_map(hash_map *hashMap1,hash_map *hashMap2){
+    hash_map *phash_map = create_hash_map(hashMap1->capacity+hashMap2->capacity);
+    hash_mapIterator *pIterator1 = create_hash_map_iterator(hashMap1);
+    while (has_next_hash_map_iterator(pIterator1)) {
+        Entry *entry = next_hash_map_iterator(pIterator1);
+        put_hash_map(phash_map,entry->key,entry->value);
     }
-    HashMapIterator *pIterator2 = createHashMapIterator(hashMap2);
-    while (hasNextHashMapIterator(pIterator2)) {
-        Entry *entry = nextHashMapIterator(pIterator2);
-        putHashMap(pHashMap,entry->key,entry->value);
+    hash_mapIterator *pIterator2 = create_hash_map_iterator(hashMap2);
+    while (has_next_hash_map_iterator(pIterator2)) {
+        Entry *entry = next_hash_map_iterator(pIterator2);
+        put_hash_map(phash_map,entry->key,entry->value);
     }
-    return pHashMap;
+    return phash_map;
 }
 
 //差集
 
 //差集,返回一个新的Map集合,返回hashMap2的差集
-HashMap *differenceHashMap(HashMap *hashMap1,HashMap *hashMap2){
-    HashMap *pHashMap = createHashMap(hashMap1->capacity);
-    HashMapIterator *pIterator1 = createHashMapIterator(hashMap1);
-    while (hasNextHashMapIterator(pIterator1)) {
-        Entry *entry = nextHashMapIterator(pIterator1);
-        if(!containsKey(hashMap2,entry->key)){
-            putHashMap(pHashMap,entry->key,entry->value);
+hash_map *difference_hash_map(hash_map *hashMap1,hash_map *hashMap2){
+    hash_map *phash_map = create_hash_map(hashMap1->capacity);
+    hash_mapIterator *pIterator1 = create_hash_map_iterator(hashMap1);
+    while (has_next_hash_map_iterator(pIterator1)) {
+        Entry *entry = next_hash_map_iterator(pIterator1);
+        if(!contains_key(hashMap2,entry->key)){
+            put_hash_map(phash_map,entry->key,entry->value);
         }
     }
-    return pHashMap;
+    return phash_map;
 }
 
 //交集
 
 //交集,返回一个新的Map集合
-HashMap *intersectionHashMap(HashMap *hashMap1,HashMap *hashMap2){
-    HashMap *pHashMap = createHashMap(hashMap1->capacity);
-    HashMapIterator *pIterator1 = createHashMapIterator(hashMap1);
-    while (hasNextHashMapIterator(pIterator1)) {
-        Entry *entry = nextHashMapIterator(pIterator1);
-        if(containsKey(hashMap2,entry->key)){
-            putHashMap(pHashMap,entry->key,entry->value);
+hash_map *intersection_hash_map(hash_map *hashMap1,hash_map *hashMap2){
+    hash_map *phash_map = create_hash_map(hashMap1->capacity);
+    hash_mapIterator *pIterator1 = create_hash_map_iterator(hashMap1);
+    while (has_next_hash_map_iterator(pIterator1)) {
+        Entry *entry = next_hash_map_iterator(pIterator1);
+        if(contains_key(hashMap2,entry->key)){
+            put_hash_map(phash_map,entry->key,entry->value);
         }
     }
-    return pHashMap;
+    return phash_map;
 }
 
 //补集
 
 //补集,返回一个新的Map集合
-HashMap *complementHashMap(HashMap *hashMap1,HashMap *hashMap2){
-    HashMap *pHashMap = createHashMap(hashMap1->capacity);
-    HashMapIterator *pIterator1 = createHashMapIterator(hashMap1);
-    while (hasNextHashMapIterator(pIterator1)) {
-        Entry *entry = nextHashMapIterator(pIterator1);
-        if(!containsKey(hashMap2,entry->key)){
-            putHashMap(pHashMap,entry->key,entry->value);
+hash_map *complement_hash_map(hash_map *hashMap1,hash_map *hashMap2){
+    hash_map *phash_map = create_hash_map(hashMap1->capacity);
+    hash_mapIterator *pIterator1 = create_hash_map_iterator(hashMap1);
+    while (has_next_hash_map_iterator(pIterator1)) {
+        Entry *entry = next_hash_map_iterator(pIterator1);
+        if(!contains_key(hashMap2,entry->key)){
+            put_hash_map(phash_map,entry->key,entry->value);
         }
     }
-    HashMapIterator *pIterator2 = createHashMapIterator(hashMap2);
-    while (hasNextHashMapIterator(pIterator2)) {
-        Entry *entry = nextHashMapIterator(pIterator2);
-        if(!containsKey(hashMap1,entry->key)){
-            putHashMap(pHashMap,entry->key,entry->value);
+    hash_mapIterator *pIterator2 = create_hash_map_iterator(hashMap2);
+    while (has_next_hash_map_iterator(pIterator2)) {
+        Entry *entry = next_hash_map_iterator(pIterator2);
+        if(!contains_key(hashMap1,entry->key)){
+            put_hash_map(phash_map,entry->key,entry->value);
         }
     }
-    return pHashMap;
+    return phash_map;
 }
 
 //并集
-HashMap *unionHashMap(HashMap *hashMap1,HashMap *hashMap2){
-    HashMap *pHashMap = createHashMap(hashMap1->capacity+hashMap2->capacity);
-    HashMapIterator *pIterator1 = createHashMapIterator(hashMap1);
-    while (hasNextHashMapIterator(pIterator1)) {
-        Entry *entry = nextHashMapIterator(pIterator1);
-        putHashMap(pHashMap,entry->key,entry->value);
+hash_map *union_hash_map(hash_map *hashMap1,hash_map *hashMap2){
+    hash_map *phash_map = create_hash_map(hashMap1->capacity+hashMap2->capacity);
+    hash_mapIterator *pIterator1 = create_hash_map_iterator(hashMap1);
+    while (has_next_hash_map_iterator(pIterator1)) {
+        Entry *entry = next_hash_map_iterator(pIterator1);
+        put_hash_map(phash_map,entry->key,entry->value);
     }
-    HashMapIterator *pIterator2 = createHashMapIterator(hashMap2);
-    while (hasNextHashMapIterator(pIterator2)) {
-        Entry *entry = nextHashMapIterator(pIterator2);
-        putHashMap(pHashMap,entry->key,entry->value);
+    hash_mapIterator *pIterator2 = create_hash_map_iterator(hashMap2);
+    while (has_next_hash_map_iterator(pIterator2)) {
+        Entry *entry = next_hash_map_iterator(pIterator2);
+        put_hash_map(phash_map,entry->key,entry->value);
     }
-    return pHashMap;
+    return phash_map;
 }
+#endif
 
 //清除Map
-void hashMapClear(HashMap *hashMap){
+void hash_map_clear(hash_map *hashMap){
     for (int i = 0; i < hashMap->nodeLen; i++) {
         // 释放冲突值内存
         Entry *entry = hashMap->list[i];

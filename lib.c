@@ -48,10 +48,10 @@ int hexchar2int(unsigned char c)
 char *hexchar2bin(u8 *hex, u32 *len)
 {
     u8 cl, ch, *p, *q, *hex_buf;
-    int i, chi, cli;
+    int chi, cli;
     int hex_len;
 
-    hex_len = strlen(hex);
+    hex_len = strlen((char *)hex);
     *len = hex_len >> 1;
     if (hex_len & 1)
         return NULL;
@@ -72,7 +72,7 @@ char *hexchar2bin(u8 *hex, u32 *len)
         *q++ = (u8)((chi << 4) | cli);
     }
 
-    return hex_buf;
+    return (char*)hex_buf;
 }
 
 char *bin2hexchar(unsigned char *md, u32 len)
