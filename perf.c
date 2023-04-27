@@ -26,34 +26,6 @@
 
 //全局变量定义
 
-#define SET_THREAD_TO_CPU(num)                                                \
-            CPU_ZERO(&cpuset);                                                \
-            CPU_SET(num , &cpuset);                                           \
-            pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
-
-//设置轮询线程的cpu分配策略
-//例如将轮询线程从cpu5开始依次分配，或者是从cpu16开始从后往前分配，在此修改
-//轮询线程数量由POLLING_NUM和队列数量通过((队列数量-1)/POLLING_NUM + 1 )计算得到
-//POLLING_NUM宏用于指定轮询线程最多轮询几个队列
-//举例，如果设置为2，分配4个队列，则表示一个轮询线程最多轮询2个队列
-//0号负责0 2 队列，1号线程负责1 3队列
-//如果分配5个队列，则会创建三个轮询线程，0号负责0 2 队列，1号线程负责1 3 队列，2号线程负责4号队列
-
-#define POLLING_NUM 2
-
-#define COMPUTE_POLL_THREAD_CPU(id) \
-                            (id + 5)
-
-//设置任务下发侠女的分配策略，目前是从0开始依次分配
-#define COMPUTE_THREAD_CPU(id)\
-                       (id + 0)
-
-//设置最大队列数量和最大线程数量
-#define MAX_QUEUE_NUM 16
-#define MAX_NUMBER_OF_THREADS 16
-#define MAX_NUMA_NUM 3
-
-
 //全局变量定义
 perf_callbacks global_perf_algo_list[];
 sem_t end_sem;
@@ -61,8 +33,6 @@ sem_t end_poll;
 cpu_set_t cpuset;
 
 int numa_node = 0;
-pce_queue_handle g_queue_handles[MAX_QUEUE_NUM];
-
 pthread_key_t thread_key; //线程私有数据，用于存放每个线程的id和需要执行的loopargs
 volatile int running = 0;
 volatile int stop_poll = 0;
@@ -315,7 +285,13 @@ int run_benchmark(bench_function loop_function, loopargs_t *loopargs)
     run = 1;
     count = 0;
     //0x3fffffff用于防止死锁
-    for (i = 0;run && i < 0x0ffffffff; i++) {       
+    for (i = 0;run && i < 0x0ffffffff; i++) {
+        //允许一个线程向两个队列发送数据
+        #ifdef USE_ONE_TO_MULTI
+        loopargs->ring = &perf_rings[thread_id + 2 *(i&1)];
+        //printf("thread:%d send to %d\n",thread_id,thread_id + 2*(i & 1));
+        #endif
+       
         count += loop_function((void *)loopargs);
         if(sem_trywait(end_sem) == 0 ){
             break;
@@ -327,7 +303,6 @@ int run_benchmark(bench_function loop_function, loopargs_t *loopargs)
 typedef struct {
     pce_rsp_t *rsp_datas;
     int rsp_datas_size;
-    pce_queue_handle *queue_handle;
     int thread_id;
 }poll_struct;
 
@@ -566,9 +541,8 @@ void* thread_function(void* id)
     //printf("loopargs->ring:%lx\n",loopargs->ring);
     loopargs->requests = malloc((sizeof(pce_op_data_t)) * g_batch);
     loopargs->op_datas = malloc((sizeof(pce_op_data_t*)) * g_batch);
-    loopargs->batch = g_batch;
+    loopargs->batch = 1;
     loopargs->thread_id = thread_id;
-    printf("alloc thread:%d to control:%d polling thread num:%d\n",thread_id,thread_id % poll_thread_num,poll_thread_num);
     sem_t *end_poll = &(control[thread_id % poll_thread_num].end_poll);
     sem_t *start_sem = GET_START_SEM();
     //如果有多个输入算法，则执行多次，如果为mix的，则只会执行一次
@@ -629,7 +603,7 @@ out:
     control[thread_id % poll_thread_num].poll_run = 0;
     control[thread_id % poll_thread_num].stop_poll = 1;
     poll_run = 0;
-    stop_poll += 1;
+    __sync_fetch_and_add(&stop_poll ,1);
     //执行完后释放,loopargs
     pce_free_mem(loopargs->src_buf);
     pce_free_mem(loopargs->dst_buf);
@@ -675,7 +649,7 @@ int poll_queue(void* polling)
             //因此只能借用result的第一个数据成员存放结果
             //对称加密以及摘要算法可以将tag带回，因此可以使用CALLBACK_HEAD_IS_VAILD判断是否是本测试程序下发的请求
 
-            if (CALLBACK_HEAD_IS_VAILD(callback) && rsp_datas[i].state == CMD_SUCCESS) {
+            if (CALLBACK_HEAD_IS_VAILD(callback) /*&& rsp_datas[i].state == CMD_SUCCESS*/) {
                 //printf("responce_error:%lx ,%ld,%ld\n",callback,GET_CALLBACK_THREAD_ID(callback),GET_CALLBACK_ALGOINDEX(callback));
                 //results[GET_CALLBACK_THREAD_ID(callback)][GET_CALLBACK_ALGOINDEX(callback)][GET_CALLBACK_TEST_NUM(callback)]++;
                 results[GET_CALLBACK_THREAD_ID(callback)][GET_CALLBACK_TEST_NUM(callback)]++;
@@ -698,7 +672,7 @@ int poll_queue(void* polling)
 sem_t start_timer;
 sem_t start_poll;
 
-int timer(){
+int timer(void){
     //由主线程执行,控制定时
     int i= 0;
     for(i = 0;i < poll_thread_num;i++){
@@ -735,7 +709,6 @@ void* process_response(void * id) //仅需要轮询对应的队列即可，也�
     }
     poll.rsp_datas = rsp_datas;
     poll.rsp_datas_size = max_dequeue_count;
-    poll.queue_handle = g_queue_handles[0];
     poll.thread_id = thread_id;
     sem_t *end_sem = &control[thread_id].end_sem;
     sem_t *start_sem = &control[thread_id].start_sem;
@@ -819,7 +792,12 @@ int show_results(int pr_header) //多线程输出结果不正确
     //打印多线程测试结果，由主线程执行,i用于处理多线程
     int testnum = 0;
     for(i = 0; i < g_thread_num ; i++){
-        printf("Benchmark result of thread id: %d\n", i);
+        printf("Benchmark result of thread: %d\n", i);
+        #ifdef USE_ONE_TO_MULTI
+        printf("thread:%d alloc to queue:%d and %d\n", i,i,i + 2);
+        #else
+        printf("thread:%d alloc to queue:%d\n", i,i % poll_thread_num);
+        #endif
         if (pr_header) { // for sym or hash etc.
             if (mr)      // child
                 printf("+H");
@@ -920,6 +898,7 @@ static int set_global_variables()
         if(g_thread_num > MAX_THREAD_NUM){
             fprintf(stderr,"Input thread num is greater than MAX_THREAD_NUM,only use %d!!\n",MAX_THREAD_NUM);
             g_thread_num = MAX_THREAD_NUM;
+
         }
     }
     
@@ -930,9 +909,12 @@ static int set_global_variables()
             g_queue_num = MAX_QUEUE_NUM;
         }
     }
-    
+//如果允许一个线程向两个队列发送数据
+#ifdef USE_ONE_TO_MULTI
+    g_thread_num = g_queue_num / 2;
+#endif
     if(cmd_option.batch > g_batch){ //如果不这样设置会出现错误corrupted size vs. prev_size
-        g_batch = cmd_option.batch;
+        g_batch = cmd_option.batch > 32? cmd_option.batch : 32;
     }
 
     if(cmd_option.numa_node  > numa_node){ //更新numa_node的值
@@ -966,10 +948,6 @@ static int set_global_variables()
         fprintf(stderr,"No depth input,use default queue depth: 256\n");
         g_queue_depth = PCE_QUEUE_DEPTH_256;
     }
-
-    sem_init(&end_poll,0,0);
-    sem_init(&end_sem,0,0);
-    sem_init(&start_sem, 0, 0);
     return 0;
 }
 
@@ -1043,9 +1021,12 @@ int main(int argc, char **argv)
     for(i = 0;i < g_thread_num; i++)
         pthread_join(threads[i],NULL);
 
-    for(i = 0;i < ((g_queue_num / POLLING_NUM) ); i++)
+    for(i = 0;i < ((g_queue_num - 1)/ POLLING_NUM)+1 ; i++){
+        sem_destroy(&control[i].start_sem);
+		sem_destroy(&control[i].end_sem);
+		sem_destroy(&control[i].end_poll);
         pthread_join(pollingthreads[i],NULL);
-
+    }
     pthread_key_delete(thread_key);
     //final_queue_from_device(queue_num);
     mp_ring_free(g_queue_num);

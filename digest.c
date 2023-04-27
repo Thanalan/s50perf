@@ -64,7 +64,7 @@ int test_hmac_loop(void *args)
 
     //入队
     enqueued_count = mp_enqueue(ring, &hash_datas, batch);//批量入队
-    printf("thread:%d enqueued count:%d\n",loopargs->thread_id,enqueued_count);
+    //printf("thread:%d enqueued count:%d\n",loopargs->thread_id,enqueued_count);
     if (0 == enqueued_count) {
          goto out;
     }
@@ -175,7 +175,8 @@ void test_hash_perf(loopargs_t *loopargs)
     uint16_t thread_id = loopargs->thread_id;
     int length = cmd_option.test_length;
     algo_data_t *algo_data = (algo_data_t*)get_hash_map(g_algo_hash_table, loopargs->algo_name);
-    
+    struct  timeval tv;
+    struct  timeval tv1;
     uint16_t algo_index = algo_data->algo_index;
     loopargs->algo_index = algo_index;
 
@@ -190,7 +191,7 @@ void test_hash_perf(loopargs_t *loopargs)
     uint16_t pce_algo = algo_data->pce_algo;
     loopargs->batch = cmd_option.batch;
 
-    sem_t *start_sem = &(control[thread_id % poll_thread_num].start_sem);
+    sem_t *start_sem = GET_START_SEM();
     if(algo_data->algo_type == ALGO_TYPE_HASH){
         test_hash_fn = test_hash_loop;
     }else if(algo_data->algo_type == ALGO_TYPE_HMAC){
@@ -217,12 +218,12 @@ void test_hash_perf(loopargs_t *loopargs)
         print_message(algo_name, 0, loopargs->test_length, cmd_option.duration);
         //printf("g_poll_thread_num:%d\n",poll_thread_num);
         sem_post(start_sem);
-        gettimeofday(&(control[thread_id % poll_thread_num].tv),NULL);         
+        gettimeofday(&tv,NULL);         
         count = run_benchmark(test_hash_fn, loopargs);
-        gettimeofday(&(control[thread_id % poll_thread_num].tv1),NULL);
-        d = (control[thread_id % poll_thread_num].tv1.tv_usec-control[thread_id % poll_thread_num].tv.tv_usec)/(100000.0)+((control[thread_id % poll_thread_num].tv1.tv_sec-control[thread_id % poll_thread_num].tv.tv_sec));
+        gettimeofday(&tv1,NULL);
+        d = (tv1.tv_usec-tv.tv_usec)/(100000.0)+((tv1.tv_sec- tv.tv_sec));
         print_result(algo_index, testnum, count,d ,thread_id);  
-        
+      //  printf("time:%f\n",COMPUTE_TIME_INTERVAL(GET_TV(),GET_TV1()));
     }
     if(segnum > 1 ){
             pce_free_mem(loopargs->src);

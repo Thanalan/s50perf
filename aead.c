@@ -148,7 +148,8 @@ void test_aead_perf(loopargs_t *loopargs)
     int algo_index = algo_data->algo_index;
     char *algo_name = algo_data->algo;
     uint16_t pce_algo = algo_data->pce_algo;
-
+    struct  timeval tv;
+    struct  timeval tv1;
     thread_run_algo[thread_id] = algo_index ;
 
     if(segnum > 1){

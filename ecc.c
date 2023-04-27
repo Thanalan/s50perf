@@ -747,8 +747,8 @@ static const int test_ecc_curves_bits[] = {
 int eccsign_doit[SM2_NUM] = {0};
 int eccenc_doit[SM2_NUM] = {0};
 
-static double eccsign_results[MAX_THREAD_NUM][3];
-static double eccenc_results[SM2_NUM][3];
+static double eccsign_results[MAX_THREAD_NUM][EC_NUM];
+static double eccenc_results[SM2_NUM][EC_NUM];
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
 
@@ -942,11 +942,11 @@ void test_perf_for_ecc(loopargs_t *loopargs)
     int algo_index = algo_data->algo_index;
     loopargs->algo_index = algo_index;
     ecc_test_data_t *ecc_data = pce_alloc_mem(numa_node, sizeof(ecc_test_data_t) * 2);
-    uint16_t ecc_operations[] = {PCE_ECDSA_SIGN, PCE_ECDSA_VERIFY, PCE_ECC_KEY, 0 };
-    char *ecc_ops[]={"sign","verify","genkey",NULL};
+    uint16_t ecc_operations[] = {PCE_ECDSA_SIGN, PCE_ECDSA_VERIFY, PCE_ECC_KEY, PCE_ECC_PUBKEY, PCE_ECDH_EXCHANGE, 0 };
+    char *ecc_ops[]={"sign", "verify", "genkey", "pubkey", "ecdh-exchange", NULL};
     show_results_funcs[thread_id] = show_results_for_ecc;
     // test ecc sign and verify
-    for (testnum = 0; ecc_operations[testnum] != 0; testnum++) {    
+    for (testnum = 0; testnum < 5; testnum++) {    
         // SIGN性能测试
         memset(ecc_data, 0, sizeof(ecc_test_data_t));
         
@@ -995,7 +995,7 @@ void show_results_for_ecc(uint16_t thread_id)
 {
     int testnum = 1;
     int k,i;
-    char *ecc_ops[]={"sign","verify","genkey",NULL};
+    char *ecc_ops[]={"sign", "verify", "genkey", "pubkey", "ecdh exchange", NULL};
     for (k = 0; k < SM2_NUM; k++) {
         //if (!sm2sign_doit[k])
             // continue;

@@ -317,6 +317,8 @@ void test_cipher_perf(loopargs_t *loopargs)
     int algo_index = algo_data->algo_index;
     char *algo_name = algo_data->algo;
     uint16_t pce_algo = algo_data->pce_algo;
+    struct  timeval tv;
+    struct  timeval tv1;
     if(segnum > 1){
         loopargs->use_linklist = true;
         src_head = malloc_linklist(src_head, segnum);

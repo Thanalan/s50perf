@@ -28,6 +28,32 @@
 #include "pce_utils.h"
 #endif
 
+//此宏用于控制一个线程向两个队列发送数据
+//线程数量为队列数量整除以2
+//#define USE_ONE_TO_MULTI 
+
+//设置轮询线程的cpu分配策略
+//例如将轮询线程从cpu5开始依次分配，或者是从cpu16开始从后往前分配，在此修改
+//轮询线程数量由POLLING_NUM和队列数量通过((队列数量-1)/POLLING_NUM + 1 )计算得到
+//POLLING_NUM宏用于指定轮询线程最多轮询几个队列
+//举例，如果设置为2，分配4个队列，则表示一个轮询线程最多轮询2个队列
+//0号负责0 2 队列，1号线程负责1 3队列
+//如果分配5个队列，则会创建三个轮询线程，0号负责0 2 队列，1号线程负责1 3 队列，2号线程负责4号队列
+
+#define POLLING_NUM 2
+
+#define COMPUTE_POLL_THREAD_CPU(id) \
+                            (id + 5)
+
+//设置任务下发侠女的分配策略，目前是从0开始依次分配
+#define COMPUTE_THREAD_CPU(id)\
+                       (id + 0)
+
+//设置最大队列数量和最大线程数量
+#define MAX_QUEUE_NUM 16
+#define MAX_NUMBER_OF_THREADS 16
+#define MAX_NUMA_NUM 3
+
 #define SIZE_NUM (11)
 #define ALGOR_NUM (34)
 
@@ -56,6 +82,8 @@
 #ifndef false
 #define false (0 == 1)
 #endif
+
+
 
 enum ALGO_TYPE{
     ALGO_TYPE_HASH = 0,
@@ -239,7 +267,7 @@ extern int ceu_node;
 extern int mem_node;
 extern int cpu_node;
 extern pthread_key_t thread_key; //用于访问线程私有数据
-extern pce_queue_handle g_queue_handles[MAX_QUEUE_NUM];
+
 extern int g_thread_num ; // 线程数量默认值
 extern int g_queue_num ;
 extern int g_batch;
@@ -247,7 +275,7 @@ extern int ceu_node;
 extern int numa_node;
 extern volatile int running ;
 extern volatile int stop_poll;
-
+extern int g_enqueue_batch;
 extern struct   timeval    tv;
 extern struct  timeval  tv1;
 //extern double error_count[MAX_THREAD_NUM][ALGO_SYM_NUM][SIZE_NUM];
@@ -311,8 +339,6 @@ typedef struct {
 
 extern control_sem *control;
 extern int poll_thread_num;
-
-
 
 typedef struct {
     int index;
@@ -463,6 +489,13 @@ enum ALGO_DIGEST_LEN{
      &control[thread_id % poll_thread_num].end_poll;
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+
+
+//将线程分配到cpu
+#define SET_THREAD_TO_CPU(num)                                                \
+            CPU_ZERO(&cpuset);                                                \
+            CPU_SET(num , &cpuset);                                           \
+            pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
 
 
 #endif

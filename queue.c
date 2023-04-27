@@ -14,12 +14,13 @@
 //出队则不需要支持多线程同时访问，因为使用取余后，保证轮询线程数量不会大于队列数量，
 
 //实际入队的burst数量
-#define MIN_ENQUEUE_BATCH 16
+int enqueue_batch = 32;
+#define MIN_ENQUEUE_BATCH (enqueue_batch)
 #define RING_PAUSE_REP_COUNT 2 //如果重试两次后仍然没有更新当前tail,则让出当然线程，使用sched_yidld
 #define ENQUEUE_PAUSE_COUNT 16
 
 //op_datas数组的大小，可以小于硬件队列的大小
-#define RING_SIZE 128
+#define RING_SIZE (enqueue_batch * 2)
 
 //对于只会运行一次的部分使用run_once
 
@@ -47,7 +48,6 @@ int mp_ring_init(int queue_num)
     //int depth;
     //生成对应数量的队列描述符
     perf_rings = malloc(sizeof(perf_ring) * queue_num); //分配内存空间
-
     for(i = 0 ; i < queue_num && i < MAX_QUEUE_NUM; i++){
         if(perf_rings[i].queue_handle ==  NULL){
             if (pce_request_queue(numa_node, &perf_rings[i].queue_handle)) {
@@ -65,6 +65,10 @@ int mp_ring_init(int queue_num)
             }
         }
         perf_rings[i].reference_count = 0;
+        //如果允许一个线程向两个队列发送
+        #ifdef USE_ONE_TO_MULTI
+        perf_rings[i].reference_count = 1;
+        #endif
         perf_rings[i].prod.head = 0;
         perf_rings[i].prod.tail = 0;
         perf_rings[i].prod.size = RING_SIZE;
@@ -99,6 +103,7 @@ int mp_ring_free(int queue_num)
 
 }
 
+
 //映射线程和队列句柄的对应关系
 perf_ring *get_queue_handle_from_ring(int thread_id,int thread_num,int queue_num)
 {
@@ -119,7 +124,7 @@ perf_ring *get_queue_handle_from_ring(int thread_id,int thread_num,int queue_num
         } 
         __sync_fetch_and_add(&perf_rings[i].reference_count, 1);
     }   
-
+    printf("thread:%d count:%d\n",thread_id,perf_rings[i].reference_count);
     return &perf_rings[i];
 }
 
@@ -181,7 +186,7 @@ inline int mp_enqueue(perf_ring *ring, pce_op_data_t **ops,unsigned int n)
             success = atomic32_cmpset(&ring->prod.head, prod_head,
                               prod_next);/*此操作应该会从内存中读取值，并将不同核的修改写回到内存中*/
         } while (unlikely(success == 0));/*如果失败，更新相关指针重新操作*/
-        
+        //printf("free_encrtye:%d\n",free_entries);
         smp_wmb();/*写内存屏障*/     
         //开始实际入队到op_datas中
         while(i < n){

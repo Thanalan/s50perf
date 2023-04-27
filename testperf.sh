@@ -18,7 +18,8 @@ help() {
 }
 file=./perf
 if [ ! -f "$file" ]; then
-    echo "$file does not exist"
+    echo "$file does not exist!"
+    echo "You must compile $file first!"
     exit;
 fi
 
