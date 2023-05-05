@@ -1,0 +1,5 @@
+perf.data   
+*.o
+sm3sum
+.DS_Store
+.vscode/
