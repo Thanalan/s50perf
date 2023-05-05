@@ -10,10 +10,10 @@
 INCLUDE_DIR?=../include
 TARGET_LIB_DIR?=../lib
 CFLAGS += -I$(INCLUDE_DIR)  -O2 -g -Wno-int-conversion  -Wno-pointer-sign 
-#CFLAGS += $(shell pkg-config --cflags libpce)
+CFLAGS += $(shell pkg-config --cflags libpce)
 
 LIBS += -L$(TARGET_LIB_DIR) -lpthread 
-#LIBS += $(shell pkg-config --libs libpce)
+LIBS += $(shell pkg-config --libs libpce)
 TARGET_BIN_DIR?=.
 SRC=$(wildcard *.c  )
 OBJS=$(patsubst %.c, %.o, $(SRC))

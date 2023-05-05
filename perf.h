@@ -12,7 +12,7 @@
 #include "command.h"
 #include "hashtable.h"
 #define USE_INTER_PCE 1
-#if 0
+#if 1
 #include <pce/pce_crypto.h>
 
 #include <pce/pce.h>
