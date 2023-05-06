@@ -128,7 +128,6 @@ int test_hash_loop(void *args)
     if (NULL == args) {
         return 0;
     }
-    
     uint8_t *src = loopargs->src;
     uint8_t *dst = loopargs->dst; //此处应该根据链式进行赋值
     int i = 0;
@@ -192,6 +191,7 @@ void test_hash_perf(loopargs_t *loopargs)
     loopargs->batch = cmd_option.batch;
 
     sem_t *start_sem = GET_START_SEM();
+    //sem_t *start_sem = &control[thread_id % poll_thread_num].start_sem;
     if(algo_data->algo_type == ALGO_TYPE_HASH){
         test_hash_fn = test_hash_loop;
     }else if(algo_data->algo_type == ALGO_TYPE_HMAC){
@@ -199,7 +199,6 @@ void test_hash_perf(loopargs_t *loopargs)
     }else { //此时不是hash或者hmac
         fprintf(stderr,"Not hash or hmac:%s in line %d in file:\n%s\n",algo_name, __LINE__,__FILE__);
     }
-    
     for (testnum = 0; testnum < SIZE_NUM; testnum++) {
         if(length > 0){
             loopargs->test_length = length;

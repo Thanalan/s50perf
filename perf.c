@@ -282,17 +282,20 @@ int run_benchmark(bench_function loop_function, loopargs_t *loopargs)
     uint16_t thread_id = loopargs->thread_id ;
     sem_t *end_sem = &control[thread_id % poll_thread_num].end_sem;
     //printf("thread:%d endsemaddr:%lx\n",thread_id,end_sem);
-    run = 1;
+    control[thread_id % poll_thread_num].run = 1;
     count = 0;
     //0x3fffffff用于防止死锁
-    for (i = 0;run && i < 0x0ffffffff; i++) {
+    for (i = 0;control[thread_id % poll_thread_num].run && i < 0x0ffffffff; i++) {
         //允许一个线程向两个队列发送数据
         #ifdef USE_ONE_TO_MULTI
         loopargs->ring = &perf_rings[thread_id + 2 *(i&1)];
-        //printf("thread:%d send to %d\n",thread_id,thread_id + 2*(i & 1));
+        //if(thread_id == 1)
+          //  printf("thread:%d send to %d poll_thread_num:%d\n",thread_id,thread_id + 2*(i & 1),poll_thread_num);
         #endif
        
         count += loop_function((void *)loopargs);
+         //if(thread_id == 0)
+            //printf("thread:%d send to %d poll_thread_num:%d\n",thread_id,thread_id + 2*(i & 1),poll_thread_num);
         if(sem_trywait(end_sem) == 0 ){
             break;
         }
@@ -532,6 +535,7 @@ void* thread_function(void* id)
     //因为每个线程执行的函数相同，但是访问的数据不同，所以需要线程私有数据，每个线程存一个副本
     pthread_setspecific(thread_key, (void*)loopargs);
     loopargs->src_buf = pce_alloc_mem(numa_node, lengths[SIZE_NUM - 1] + 64); //源数据
+    printf("src_buf:%lx\n",loopargs->src_buf);
     loopargs->dst_buf = pce_alloc_mem(numa_node, lengths[SIZE_NUM - 1] + 64);  //分配数据的最大长度
     loopargs->src = loopargs->src_buf;
     loopargs->dst = loopargs->dst_buf;
@@ -606,14 +610,22 @@ out:
     __sync_fetch_and_add(&stop_poll ,1);
     //执行完后释放,loopargs
     pce_free_mem(loopargs->src_buf);
+   // printf("src_buf:%lx\n",loopargs->src_buf);
+    //printf("609\n");
     pce_free_mem(loopargs->dst_buf);
+   // printf("610\n");
     pce_free_mem(loopargs->requests);
+   // printf("611\n");
     pce_free_mem(loopargs->op_datas);
+   // printf("614\n");
     free(loopargs->algo_name);
     free(loopargs);
     sem_post(end_poll);
     sem_post(start_sem);
     //__sync_fetch_and_sub(&control[thread_id % poll_thread_num].end1,1);
+     for(i = 0;i < ((g_queue_num - 1)/ POLLING_NUM)+1 ; i++){
+            sem_post(&control[i].start_sem);
+    }
     return NULL;
 
 }
@@ -635,8 +647,14 @@ int poll_queue(void* polling)
     int thread_id = poll->thread_id;
 
     for(i = 0; i < g_queue_num; i++){
-
+        if(thread_id + step *i > g_queue_num - 1){
+            break;
+        }
         queue_handle = perf_rings[thread_id + step *i].queue_handle;//获得本次轮询的队列句柄
+        if(unlikely(queue_handle == NULL)){
+            fprintf(stderr,"poll queue:thread:%d queue_handle:%d is null\n",thread_id,thread_id + step *i );
+            continue;
+        }
         dequeued_count = pce_dequeue(queue_handle, rsp_datas, rsp_datas_size);//尽量多出队
 
         for (k = 0; k < dequeued_count; k++) {
@@ -649,12 +667,12 @@ int poll_queue(void* polling)
             //因此只能借用result的第一个数据成员存放结果
             //对称加密以及摘要算法可以将tag带回，因此可以使用CALLBACK_HEAD_IS_VAILD判断是否是本测试程序下发的请求
 
-            if (CALLBACK_HEAD_IS_VAILD(callback) /*&& rsp_datas[i].state == CMD_SUCCESS*/) {
+            if ( 1/*CALLBACK_HEAD_IS_VAILD(callback) && rsp_datas[i].state == CMD_SUCCESS*/ ) {
                 //printf("responce_error:%lx ,%ld,%ld\n",callback,GET_CALLBACK_THREAD_ID(callback),GET_CALLBACK_ALGOINDEX(callback));
                 //results[GET_CALLBACK_THREAD_ID(callback)][GET_CALLBACK_ALGOINDEX(callback)][GET_CALLBACK_TEST_NUM(callback)]++;
                 results[GET_CALLBACK_THREAD_ID(callback)][GET_CALLBACK_TEST_NUM(callback)]++;
             }else {
-                //printf("responce_error:%lx ,%ld,%ld\n",callback,GET_CALLBACK_THREAD_ID(callback),GET_CALLBACK_ALGOINDEX(callback));
+                printf("responce_error:%lx ,%ld,%ld\n",callback,GET_CALLBACK_THREAD_ID(callback),GET_CALLBACK_ALGOINDEX(callback));
                 __sync_fetch_and_add(&error_counts, 1);
             }
             //错误计数,仅统计没有成功执行的数量，而不包括入队失败的数量
@@ -662,9 +680,7 @@ int poll_queue(void* polling)
                 //error_count[GET_CALLBACK_THREAD_ID(callback_tag)][GET_CALLBACK_ALGOINDEX(callback_tag)]++;
             //}
         }
-        if(thread_id + step *i > g_queue_num){
-            break;
-        }
+
     }
     return 0;
 }
@@ -717,7 +733,7 @@ void* process_response(void * id) //仅需要轮询对应的队列即可，也�
     int k;
     do{ 
         sem_init(end_sem,0,0);
-        //printf("\npollthread:%d line 682\n",thread_id);
+        printf("thread: %d stop_poll:%d  in 733\n",thread_id,stop_poll);
         for(i = 0; i < (g_thread_num /step); i++){
             //sem_getvalue(start_sem,&k);
             //printf("start_sem:%d\n",k);
@@ -726,20 +742,21 @@ void* process_response(void * id) //仅需要轮询对应的队列即可，也�
         sem_post(&start_timer);
         while(running == 0);
         //Time_F(START);
-        //printf("\npollthread:%d line 694\n",thread_id);
+       // printf("\npollthread:%d line 694\n",thread_id);
         run_poll_benchmark(poll_queue, &poll);
         //d = Time_F(STOP);
 
         //结束计时,通知结束发送
         //used_time = d;
-        run = 0;
+        control[thread_id % poll_thread_num].run = 0;
         for(i= 0; i < (g_thread_num /step); i++){
-            sem_getvalue(end_sem,&k);
+            //sem_getvalue(end_sem,&k);
             //printf("end_sem:%d\n",k);
             sem_post(end_sem);
         }
     }while(/*sem_trywait(end_poll) != 0*/stop_poll != g_thread_num );
-    //printf("\npollthread:%d line 717 end poll\n",thread_id);
+    printf("\npollthread:%d line 717 end poll\n",thread_id);
+    printf("thread: %d stop_poll:%d g_thread_num:%d in 756\n",thread_id,stop_poll,g_thread_num);
 out:
     if (rsp_datas) {
         pce_free_mem(rsp_datas);
@@ -768,7 +785,7 @@ int create_poll_threads(pthread_t *pollingthread)
         sem_init(&control[i].end_poll, 0, 0);
         control[i].poll_run = 0;
         control[i].stop_poll = 0;
-        //control[i].end1 = 2;
+        control[i].run = 0;
         pthread_create(&pollingthread[i],NULL,process_response,i);//第四个参数可以找到响应队列，
     }
     return 0;
@@ -908,9 +925,17 @@ static int set_global_variables()
             fprintf(stderr,"Input queue num is greater than MAX_THREAD_NUM,only use %d!!\n",MAX_QUEUE_NUM);
             g_queue_num = MAX_QUEUE_NUM;
         }
+
+         if(g_queue_num > g_thread_num){
+            fprintf(stderr,"Input queue num is greater than thread_num,only use %d!!\n",g_thread_num);
+            //g_queue_num = g_thread_num;
+        }
     }
 //如果允许一个线程向两个队列发送数据
 #ifdef USE_ONE_TO_MULTI
+    //如果开启此宏，队列数量必须为偶数,奇数会出现问题
+    if(g_queue_num % 2 == 1)
+        g_queue_num --;
     g_thread_num = g_queue_num / 2;
 #endif
     if(cmd_option.batch > g_batch){ //如果不这样设置会出现错误corrupted size vs. prev_size
@@ -1022,10 +1047,10 @@ int main(int argc, char **argv)
         pthread_join(threads[i],NULL);
 
     for(i = 0;i < ((g_queue_num - 1)/ POLLING_NUM)+1 ; i++){
-        sem_destroy(&control[i].start_sem);
+        pthread_join(pollingthreads[i],NULL);
+            sem_destroy(&control[i].start_sem);
 		sem_destroy(&control[i].end_sem);
 		sem_destroy(&control[i].end_poll);
-        pthread_join(pollingthreads[i],NULL);
     }
     pthread_key_delete(thread_key);
     //final_queue_from_device(queue_num);

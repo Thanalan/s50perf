@@ -11,8 +11,8 @@ void print_result(int alg, int run_no, int count, double time_used,int thread_id
         exit(1);
     }
     //if(g_thread_num == 1){
-    fprintf(stderr, mr ? "+R:%.0f:%s:%f\n" : "%.0f %s's in %.2fs\n", results[thread_id][run_no],
-            algo_datas[alg].algo, time_used);
+    fprintf(stderr, mr ? "+R:%.0f:%s:%f\n" : "%.0f %s's in %.2fs thread:%d\n", results[thread_id][run_no],
+            algo_datas[alg].algo, time_used, thread_id);
     //}
     //results[thread_id][alg][run_no] = ((double)count) * lengths[run_no] / time_used; // 每秒处理的字节数
    // latency_results[thread_id][alg][run_no] = time_used / (((double)count)); 

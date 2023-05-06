@@ -335,6 +335,7 @@ typedef struct {
     struct timeval tv1;
     volatile int stop_poll;
     volatile int poll_run;
+    volatile int run;
 }control_sem;
 
 extern control_sem *control;

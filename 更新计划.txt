@@ -2,36 +2,8 @@
 发送请求时尽量多发送，不在等待完成，函数即可返回。统计发送的数目。
 接收线程需要增加定时，需要和发送线程进行同步的开始和停止，需要统计在这段时间内成功处理完成的请求数量，即是本次性能测试所完成的请求数量。统计由原本的发送函数改为接收函数。仍然为多线程模式
 
-使用gettimeofday完成时间统计
+一对多模式，输入队列数量为奇数时会出现错误
 
-struct completion_struct
-{
-    volatile int sem;
-	int i;
-};
-
-/* Use semaphores to signal completion of events */
-#define COMPLETION_STRUCT completion_struct
-
-#define COMPLETION_INIT(s)  __sync_fetch_and_and (&((s)->sem), 0) ;
-//sem_init(&((s)->semaphore), 0, 0);
-
-static int COMPLETION_WAIT(struct completion_struct *s, int timeout){
-	while(1){
-		if(__sync_bool_compare_and_swap(&((s)->sem),1,2))
-		{
-			break;
-		}
-	}
-		return 1;
-}
-/*
-#define COMPLETION_WAIT(s, timeout) \
-	while(1){\
-		if(__sync_bool_compare_and_swap(&((s)->sem),0,1){\
-			break;}\
-		};
-*/
-#define COMPLETE(s) __sync_fetch_and_add (&((s)->sem),1); 
-
-#define COMPLETION_DESTROY(s)  __sync_fetch_and_and (&((s)->sem), 0);
+普通模式，当队列数量和线程数量不相等时会出现卡死的情况
+修改之处：在control结构体中新增一数据成员，表示此control有几个发送线程在使用
+在之后sem_wait的时候，只需要等待队列数量即可

@@ -200,11 +200,6 @@ void test_aead_perf(loopargs_t *loopargs)
         gettimeofday(&tv1,NULL);
         d = (tv1.tv_usec-tv.tv_usec)/(100000.0)+((tv1.tv_sec-tv.tv_sec));
         print_result(algo_index, testnum, count, d,thread_id);
-        //释放链式空间
-        if(segnum > 1 ){
-            pce_free_mem(loopargs->src);
-            pce_free_mem(loopargs->dst);
-        }
     }
     if(segnum > 1 ){
         pce_free_mem(loopargs->src);
